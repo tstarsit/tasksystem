@@ -118,7 +118,6 @@ class AdminPanelProvider extends PanelProvider
                     ->shouldRegisterNavigation(false)
                     ->shouldShowEmailForm(false)
                     ->shouldShowDeleteAccountForm(false),
-            
 
 
 

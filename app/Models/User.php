@@ -43,6 +43,8 @@ class User extends Authenticatable implements HasName,FilamentUser
 
         });
     }
+
+
     public function audits(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Audit::class);

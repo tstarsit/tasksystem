@@ -21,33 +21,35 @@ class UsersImport implements ToModel,WithHeadingRow
     {
 
         return DB::transaction(function () use ($row) {
-            // Create the User first
+
+
             $user = User::create([
-                'username' => $row['cu_username'],
+                'username' => $row['su_username'],
                 'password' => Hash::make('123'),
                 'type' => 1,
                 'status' => 0
             ]);
 
             // Map system_id from Excel
-//            $excelSystemId = $row['sys_id'];
+            $excelSystemId = $row['sys_id'];
+
             $excelToSystemIdMap = [4 => 1, 3 => 3, 2 => 2, 5 => 4,6=>1];
 
-//            if (!array_key_exists($excelSystemId, $excelToSystemIdMap)) {
-//                throw new \Exception('Invalid system_id from Excel');
-//            }
-//            $systemId = $excelToSystemIdMap[$excelSystemId];
+            if (!array_key_exists($excelSystemId, $excelToSystemIdMap)) {
+               throw new \Exception('Invalid system_id from Excel');
+            }
+            $systemId = $excelToSystemIdMap[$excelSystemId];
 
-            return Client::create([
-                'user_id' => $user->id,
-                'name' => trim($row['cu_f_name'] . ' ' . $row['cu_l_name']),
-//                'system_id' => $systemId
-            ]);
-//            return Admin::create([
+//            return Client::create([
 //                'user_id' => $user->id,
-//                'name' => trim($row['su_f_name'] . ' ' . $row['su_l_name']),
-//                'system_id' => $systemId
+//                'name' => trim($row['cu_f_name'] . ' ' . $row['cu_l_name']),
+////                'system_id' => $systemId
 //            ]);
+            return Admin::create([
+                'user_id' => $user->id,
+                'name' => trim($row['su_f_name'] . ' ' . $row['su_l_name']),
+                'system_id' => $systemId
+            ]);
         });
 
 //        return new User([
