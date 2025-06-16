@@ -23,6 +23,7 @@ class Ticket extends Model
     {
         parent::boot();
 
+
         static::updating(function ($ticket) {
             $original = $ticket->getOriginal();
 
