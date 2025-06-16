@@ -1,0 +1,125 @@
+
+
+
+
+.dark\:bg-danger:is(.dark *) {
+    background-color: #8C333A;
+}
+
+
+.dark\:bg-success:is(.dark *) {
+    background-color: #28684A;
+}
+.dark\:bg-purple:is(.dark *) {
+     background-color: #4A4A95;
+
+ }
+
+.fi-badge.fi-color-primary {
+    background-color: rgb(255, 251, 235) !important;
+    color: rgb(217, 119, 6) !important;
+}
+.fi-badge.fi-color-primary {
+    background-color: rgba(255, 184, 34,0.1) !important; /* Darker shade of primary color for dark mode */
+    color: rgba(255, 184, 34,1) !important;;
+}
+
+.bg-danger {
+    background-color: #FFCDCE;
+}
+.bg-success {
+    background-color: #C4E8D1;
+}
+.bg-purple {
+    background-color: #DADCFF;
+}
+
+.shadow-2xl {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23) !important;
+}
+
+.fi-sidebar-nav {
+    border-right: 1px solid rgb(229, 231, 235); /* Tailwind's gray-200 */
+}
+
+/* Dark mode */
+.dark .fi-sidebar-nav {
+    border-right: 1px solid rgb(55, 65, 81); /* Tailwind's gray-700 */
+}
+.pending{
+    background-color: #714F19 !important;
+}
+
+.resolved{
+    background-color: #714F19 !important;
+}
+
+.fi-wi-stats-overview-stat-icon {
+    color: #ffb822f8 !important;
+}
+
+.dark .fi-simple-main{
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.8) !important;
+
+}
+.fi-simple-main{
+    background: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3) !important;
+
+}
+.fi-simple-main::before {
+    z-index: -1;
+    content: "";
+    width: 40rem;
+    height: 40rem;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 184, 34, 0.1), rgba(255, 184, 34, 0.97));
+    border-radius: 50%;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: 0 22px 22px rgba(0, 0, 0, 0.1) !important;
+    position: absolute;
+    top: -30%;
+    left: 0%;
+    animation: float 5s infinite ease-in-out;
+}
+
+/* Stars */
+.fi-simple-main::after {
+    z-index: -1;
+    content: "";
+    width: 16rem;
+    height: 16rem;
+    background: radial-gradient(circle at 70% 70%, rgba(255, 184, 34, 0.97) 20%, rgba(255, 184, 34, 0.4) 80%);
+    border-radius: 50%;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: 0 22px 22px rgba(0, 0, 0, 0.1) !important;
+    position: absolute;
+    top: 64%;
+    right: 24%;
+    animation: float 3s infinite ease-in-out alternate; /* Different timing */
+}
+
+.fi-icon-btn-badge-ctn{
+    background-color: rgb(239, 68, 68) !important;
+}
+.fi-icon-btn-badge-ctn .fi-badge,.fi-modal-heading .fi-badge{
+    background-color: rgb(239, 68, 68) !important;
+    color: white !important;
+
+}
+
+
+/* Twinkle animation for stars */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+
+
+
+
+
