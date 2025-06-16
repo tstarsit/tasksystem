@@ -12,6 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Columns\TextColumn;
+use Illuminate\Contracts\Support\Htmlable;
 use PHPUnit\Event\Telemetry\System;
 
 class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
@@ -28,6 +29,11 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
     {
         return __('Reports');
     }
+    public function getTitle(): string|Htmlable
+    {
+        return __('User Tickets');
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('User Tickets');
@@ -50,7 +56,8 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
     }
 
     protected function getFormSchema(): array
-    {
+{
+
         return [
             Forms\Components\Grid::make()
                 ->schema([
@@ -60,6 +67,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                             'client' => 'Client',
                             'admin' => 'Admin',
                         ])
+                        ->translateLabel()
                         ->default('client')
                         ->reactive()
                         ->afterStateUpdated(fn ($state) => $this->role = $state)
@@ -70,6 +78,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                         ->options(fn () => $this->getUserOptions())
                         ->searchable()
                         ->reactive()
+                        ->translateLabel()
                         ->afterStateUpdated(fn () => $this->resetTable())
                         ->columnSpan(3), // Adjust column span as needed
                 ])
