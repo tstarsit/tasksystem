@@ -33,6 +33,10 @@ class EditTicket extends EditRecord
 
     protected ?string $maxContentWidth = 'full';
 
+    /**
+     * @return string|null
+     */
+
     public function form(Forms\Form $form): Forms\Form
     {
         return $form

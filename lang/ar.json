@@ -76,7 +76,10 @@
     "Import": "استيراد",
     "Assign To": "تعيين",
     "Service": "نوع الطلب",
-    "Accepted Date": "تاريخ قبول الطلب"
+    "Accepted Date": "تاريخ قبول الطلب",
+    "Select Role": "نوع المستخدم",
+    "Select User": "المستخدم"
+
 
 
 }

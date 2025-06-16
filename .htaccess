@@ -1,0 +1,8 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+<Files "queue-worker.php">
+   Require all denied
+   Require ip 127.0.0.1
+</Files>
