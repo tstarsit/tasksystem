@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AuditResource\Pages;
 
+use App\Exports\AuditExport;
 use App\Filament\Resources\AuditResource;
 use App\Imports\AuditImport;
 use App\Imports\TicketImport;
@@ -51,6 +52,13 @@ class ListAudits extends ListRecords
                             ->send();
                     }
                 })->icon('heroicon-o-arrow-up-tray'),
+
+            Actions\Action::make('Export')
+                ->label('')
+                ->visible(auth()->user()->hasRole('super admin'))
+                ->action(function () {
+                    return Excel::download(new AuditExport(), 'Audit.xlsx');
+                })->icon('icon-excel')
 
         ];
     }
