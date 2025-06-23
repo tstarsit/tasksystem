@@ -22,10 +22,7 @@ use Illuminate\Support\Carbon;
 class AuditResource extends Resource
 {
     protected static ?string $model = Audit::class;
-    public static function canAccess(): bool
-    {
-        return auth()->user()->hasRole('super admin');
-    }
+
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     public static function getNavigationGroup(): ?string
     {

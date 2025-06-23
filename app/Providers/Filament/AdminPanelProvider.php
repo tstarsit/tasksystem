@@ -6,19 +6,15 @@ use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\VerificationPending;
 use App\Filament\Widgets\TicketsOverviewChart;
 use App\Http\Middleware\ApprovedUserMiddleware;
-use BezhanSalleh\FilamentLanguageSwitch\LanguageSwitch;
-use EightyNine\Reports\ReportsPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\MenuItem;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -28,8 +24,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
 use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage;
-use Rawilk\ProfileFilament\Filament\Pages\Profile\Security;
-use Rawilk\ProfileFilament\ProfileFilamentPlugin;
+use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -82,7 +77,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->maxContentWidth(MaxWidth::MaxContent)
             ->registration(CustomRegister::class)
-            ->databaseNotificationsPolling('60s')
+            ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -118,6 +113,9 @@ class AdminPanelProvider extends PanelProvider
                     ->shouldRegisterNavigation(false)
                     ->shouldShowEmailForm(false)
                     ->shouldShowDeleteAccountForm(false),
+                    FilamentSpatieLaravelBackupPlugin::make()
+                        ->authorize(fn (): bool => auth()->user()->hasPermissionTo('page_Backups')),
+
 
 
 

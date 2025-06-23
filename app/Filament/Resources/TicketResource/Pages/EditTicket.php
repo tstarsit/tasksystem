@@ -20,11 +20,6 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
-use Mpdf\Mpdf;
-use Illuminate\Support\Facades\View;
-
-use Mpdf\MpdfException;
-use Symfony\Component\HttpFoundation\StreamedResponse;use Filament\Forms\Components\TextInput;
 use Filament\Forms;
 
 class EditTicket extends EditRecord
@@ -174,7 +169,6 @@ class EditTicket extends EditRecord
                     'change_type' => 3,
                     'changed_column' => $changedColumn,
                 ]);
-
                 $record->delete();
                 Notification::make()
                     ->title('Deleted')

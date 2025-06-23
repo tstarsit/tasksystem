@@ -1,18 +1,22 @@
 <?php
 namespace App\Filament\Pages;
 
+use App\Exports\UserTicketExport;
 use App\Models\User;
 use App\Models\Ticket;
+use Filament\Actions\CreateAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Pages\Page;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Contracts\Support\Htmlable;
+use Maatwebsite\Excel\Facades\Excel;
 use PHPUnit\Event\Telemetry\System;
 
 class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
@@ -57,7 +61,6 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
 
     protected function getFormSchema(): array
 {
-
         return [
             Forms\Components\Grid::make()
                 ->schema([
@@ -284,6 +287,23 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                 }),
             TextColumn::make('solution')
             ->wrap(),
+        ];
+    }
+
+    protected function getTableActions(): array
+    {
+        return [
+            Action::make('export')
+                ->label(__('Export to Excel'))
+                ->icon('heroicon-o-arrow-down-tray')
+                ->action(function () {
+                    return Excel::download(
+                        new UserTicketExport($this->getTableQuery()->get()),
+                        'user-tickets-'.now()->format('Y-m-d').'.xlsx'
+                    );
+                })
+                ->color('success')
+                ->hidden(!$this->selectedUser), // Only show when a user is selected
         ];
     }
 
