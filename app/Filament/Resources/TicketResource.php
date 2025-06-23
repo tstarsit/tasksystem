@@ -273,6 +273,7 @@ public static function getNavigationLabel(): string
                                     };
                                 })
                                 ->formatStateUsing(function ($record,$state) {
+
                                     return [
                                         1 => auth()->user()->type == 1
                                             ? ($record->solved_by ? __('Resolved by') . ' ' . $record->admin->name : '')
@@ -403,6 +404,10 @@ public static function getNavigationLabel(): string
                                 fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
                             );
                     }),
+                Filter::make('solved_by_me')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->where('solved_by', auth()->id()))
+                    ->hidden(fn () => !auth()->user()->hasAnyRole(['admin', 'Head'])),
             ], layout: Tables\Enums\FiltersLayout::AboveContentCollapsible)
             ->actions([
                 Tables\Actions\EditAction::make()
