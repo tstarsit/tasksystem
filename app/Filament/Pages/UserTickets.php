@@ -290,7 +290,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
         ];
     }
 
-    protected function getTableActions(): array
+    protected function getTableHeaderActions(): array
     {
         return [
             Action::make('export')
