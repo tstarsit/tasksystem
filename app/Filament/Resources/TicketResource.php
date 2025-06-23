@@ -284,7 +284,7 @@ public static function getNavigationLabel(): string
                                         4 => __('Paid'),
                                     ][$state] ?? 'Unknown';
                                 }),
-                            Tables\Columns\TextColumn::make('delivered_date')
+                             Tables\Columns\TextColumn::make('delivered_date')
                                 ->date('d/m/Y')
                                 ->translateLabel()
                                 ->toggleable(),
