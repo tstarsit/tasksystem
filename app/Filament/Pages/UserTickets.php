@@ -252,6 +252,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                 ->toggleable(),
             TextColumn::make('description')
                 ->wrap()
+                ->translateLabel()
                 ->label('Description'),
             Tables\Columns\TextColumn::make('status')
                 ->badge()
@@ -286,7 +287,8 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                     ][$state] ?? 'Unknown';
                 }),
             TextColumn::make('solution')
-            ->wrap(),
+            ->wrap()
+            ->translateLabel(),
         ];
     }
 
