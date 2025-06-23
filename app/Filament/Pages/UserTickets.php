@@ -296,8 +296,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
     {
         return [
             Action::make('export')
-                ->label(__('Export to Excel'))
-                ->icon('heroicon-o-arrow-down-tray')
+                ->icon('icon-excel')
                 ->action(function () {
                     return Excel::download(
                         new UserTicketExport($this->getTableQuery()->get()),

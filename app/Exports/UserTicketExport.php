@@ -31,11 +31,13 @@ class UserTicketExport implements FromCollection, WithHeadings, WithMapping
             'Created At',
             'Delivered Date',
             'Solution',
+            'Solved by'
         ];
     }
 
     public function map($ticket): array
     {
+
         return [
             $ticket->id,
             $ticket->client->name ?? 'N/A',
@@ -45,6 +47,7 @@ class UserTicketExport implements FromCollection, WithHeadings, WithMapping
             $ticket->created_at,
             $ticket->delivered_date ? $ticket->delivered_date : 'N/A',
             $ticket->solution,
+            $ticket->solver->name ?? ''
         ];
     }
 
