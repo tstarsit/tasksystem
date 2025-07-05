@@ -9,6 +9,8 @@ use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Tables;
+use Filament\Tables\Actions\ExportAction;
+use Filament\Tables\Actions\ExportBulkAction;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Columns\TextColumn;
@@ -289,6 +291,28 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
         ];
     }
 
+    protected function getTableHeaderActions(): array
+    {
+        return [
+            ExportAction::make()
+                ->label('Export All')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                    // Add other columns as needed
 
+        ];
+    }
+
+
+
+    protected function getTableBulkActions(): array
+    {
+        return [
+            ExportBulkAction::make()
+                ->label(__('Export Selected'))
+                ->icon('heroicon-o-arrow-down-tray')
+                ->visible(fn () => (bool) $this->selectedUser)
+        ];
+    }
 
 }
