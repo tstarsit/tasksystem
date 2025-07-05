@@ -27,7 +27,7 @@ class TicketStat extends StatsOverviewWidget
         $resolvedCount = $queryWithoutStatus->clone()->where('status', 1)->where('solved_by',auth()->id())->count();
 
         return [
-            Stat::make(__('Pending Orders for '.Ticket::SYSTEM[auth()->user()->admin->system_id]), $pendingCount)
+            Stat::make(__('Pending Orders for '. auth()->user()->type==1? Ticket::SYSTEM[auth()->user()->admin->system_id]:'all systems'), $pendingCount)
                 ->color('primary'),
                   Stat::make(__('Pending Orders'), $pendingCountUser)
                       ->color('primary')
