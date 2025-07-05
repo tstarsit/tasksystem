@@ -24,10 +24,27 @@ class CreateTicket extends CreateRecord
         // First create the record
         $record = parent::handleRecordCreation($data);
 
+        // Determine status based on conditions
+        if (!empty($data['solution'])) {
+            $record->delivered_date = now();
+            $record->solved_by=auth()->id();
+            $record->status = 1; // Solved
+        } elseif (!empty($data['service_id'])) {
+            $record->accepted_date = now();
+            $record->status = 3; // Accepted
+        } else {
+            $record->status = 2; // Pending (default)
+        }
+
+        // Save the record if any attributes were updated
+        if ($record->isDirty(['delivered_date', 'accepted_date', 'status'])) {
+            $record->save();
+        }
+
         // Then send notification if needed
         if (auth()->user()->type == 2) {
             $clientName = auth()->user()->name;
-            $ticketId = $record->getKey(); // Use $record instead of $this->record
+            $ticketId = $record->getKey();
 
             $head = \App\Models\User::role('Head')
                 ->where('type', 1)
@@ -47,7 +64,6 @@ class CreateTicket extends CreateRecord
                                 ->button()
                                 ->icon('heroicon-o-eye')
                                 ->url(route('filament.admin.resources.tickets.edit', $ticketId))
-
                         ])
                         ->toDatabase()
                 );
@@ -59,6 +75,7 @@ class CreateTicket extends CreateRecord
     }
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+
         $data['status']=2;
         if (auth()->user()->type==2) {
             $data['client_id']=auth()->id();

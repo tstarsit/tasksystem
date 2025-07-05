@@ -18,16 +18,24 @@ use Illuminate\Support\Carbon;
 class Ticket extends Model
 {
     use HasFactory,SoftDeletes;
-
+    protected $casts = [
+        'accepted_date' => 'datetime',
+        'delivered_date' => 'datetime',
+    ];
     protected static function boot()
     {
         parent::boot();
 
-
         static::updating(function ($ticket) {
             $original = $ticket->getOriginal();
 
+            // Only log changes for existing columns
             foreach ($ticket->getDirty() as $attribute => $newValue) {
+                // Skip if the column didn't exist in original (like during creation)
+                if (!array_key_exists($attribute, $original)) {
+                    continue;
+                }
+
                 if ($original[$attribute] != $newValue) {
                     Audit::create([
                         'ticket_id' => $ticket->id,
@@ -35,7 +43,7 @@ class Ticket extends Model
                         'changed_column' => $attribute,
                         'old_value' => $original[$attribute] ?? null,
                         'new_value' => $newValue,
-                        'change_type' => 2, // You can adjust this as needed
+                        'change_type' => 2,
                     ]);
                 }
             }
@@ -43,10 +51,11 @@ class Ticket extends Model
             // Update accepted_date and delivered_date based on changes
             if ($ticket->isDirty('service_id')) {
                 $ticket->accepted_date = now();
-                $ticket->status=3;
+                $ticket->status = 3;
             }
+
             if ($ticket->isDirty('solution')) {
-                $user=User::find($ticket->client_id);
+                $user = User::find($ticket->client_id);
                 $user->notify(
                     Notification::make()
                         ->title('تم حل المشكلة')
@@ -56,19 +65,18 @@ class Ticket extends Model
                                 ->label('View Ticket')
                                 ->icon('heroicon-o-eye')
                                 ->url(EditTicket::getUrl(['record' => $ticket->id]))
-                                ->openUrlInNewTab(), // optional
+                                ->openUrlInNewTab(),
                         ])
-                        ->toDatabase()
-                    ,
+                        ->toDatabase(),
                 );
 
                 $ticket->delivered_date = now();
-                $ticket->solved_by = auth()->user()->id;
-                $ticket->status=1;
+                $ticket->solved_by = auth()->id();
+                $ticket->status = 1;
             }
 
             if ($ticket->isDirty('assigned_to')) {
-                $user=User::find($ticket->assigned_to);
+                $user = User::find($ticket->assigned_to);
                 $user->notify(
                     Notification::make()
                         ->title('A Ticket has been assigned to you')
@@ -78,10 +86,9 @@ class Ticket extends Model
                                 ->label('View Ticket')
                                 ->icon('heroicon-o-eye')
                                 ->url(EditTicket::getUrl(['record' => $ticket->id]))
-                                ->openUrlInNewTab(), // optional
+                                ->openUrlInNewTab(),
                         ])
-                        ->toDatabase()
-                    ,
+                        ->toDatabase(),
                 );
             }
         });

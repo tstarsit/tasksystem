@@ -119,22 +119,32 @@ class EditTicket extends EditRecord
                 Select::make('assigned_to')
                     ->label('Assign To')
                     ->translateLabel()
-                    ->options(Admin::where('system_id', auth()->user()->type == 1 ? auth()->user()->admin->system_id : '')->pluck('name', 'user_id'))
+                    ->options(Admin::where('system_id', auth()->user()->type == 1 ? auth()->user()->admin->system_id : '')->whereHas('user', fn ($query) => $query
+                        ->where('status', 1)
+                        ->where('type', 1))->pluck('name', 'user_id'))
                     ->visible(auth()->user()->hasAnyRole(['Head', 'super admin'])),
 
                 DateTimePicker::make('accepted_date')
                     ->label('Accepted Date')
                     ->translateLabel()
                     ->native(false)
-                    ->format('d-m-Y H:i')
-                    ->displayFormat('d/m/Y H:i')
+                    ->displayFormat('d/m/Y H:i') // How it displays to users
+                    ->format('Y-m-d H:i:s')      // How it stores in database
                     ->seconds(false)
                     ->visibleOn('edit')
                     ->visible(auth()->user()->hasAnyRole(['Head', 'super admin']))
                     ->disabled(function ($get) {
                         return empty($get('accepted_date'));
                     }),
-
+                DateTimePicker::make('delivered_date')
+                    ->label('Delievered Date')
+                    ->translateLabel()
+                    ->native(false)
+                    ->format('d-m-Y H:i')
+                    ->displayFormat('d/m/Y H:i')
+                    ->seconds(false)
+                    ->visibleOn('edit')
+                    ->visible(!auth()->user()->hasRole('client')),
                 Textarea::make('recommendation')
                     ->translateLabel()
                     ->columnSpan(2)

@@ -132,7 +132,9 @@ class StatsOverview extends BaseWidget
         if ($user->hasRole('super admin')) {
             return $query;
         }
-
+        elseif ($user->hasRole('admin')){
+            return $query->where('solved_by',auth()->id());
+        }
 
         return $user->type == 1
             ? $query->where('system_id', $user->admin->system_id)

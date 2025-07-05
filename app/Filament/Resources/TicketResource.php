@@ -2,39 +2,26 @@
 
 namespace App\Filament\Resources;
 
-use AlperenErsoy\FilamentExport\Actions\FilamentExportHeaderAction;
 use App\Filament\Resources\TicketResource\Pages;
 use App\Models\Admin;
 use App\Models\Client;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\Filter;
-use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Ticket;
-use App\Providers\Filament\MYPDF;
-use Filament\Forms;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\RichEditor;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
-
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-
-use Filament\Tables\Filters\QueryBuilder\Constraints\BooleanConstraint;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Carbon;
-use JetBrains\PhpStorm\NoReturn;
-use PDF;
-use TCPDF;
-use TCPDF_FONTS;
+
 
 
 class TicketResource extends Resource
@@ -89,6 +76,7 @@ public static function getNavigationLabel(): string
                     Grid::make(1) // Single column for description and solution
                     ->schema([
                         RichEditor::make('description')
+                            ->required()
                             ->disabled(function ($get) {
                                 return !empty($get('accepted_date'));
                             })
@@ -136,7 +124,9 @@ public static function getNavigationLabel(): string
                             ->preload()
                             ->required(),
 
+
                         Select::make('service_id')
+                            ->required()
                             ->label('Service')
                             ->translateLabel()
                             ->options(collect(self::$model::SERVICES)
@@ -144,7 +134,6 @@ public static function getNavigationLabel(): string
                                 ->toArray())
                             ->formatStateUsing(fn ($record, $state) => __($state))
                             ->visible(auth()->user()->hasAnyRole(['Head', 'super admin', 'admin'])),
-
                         // Row 2
                         Select::make('client_id')
                             ->relationship('client', 'name')
@@ -176,7 +165,6 @@ public static function getNavigationLabel(): string
                         // Row 3 (full width)
                         Textarea::make('recommendation')
                             ->translateLabel()
-                            ->visibleOn('edit')
                             ->disabled(auth()->user()->hasRole('Client'))
                             ->columnSpanFull(),
 
@@ -250,7 +238,7 @@ public static function getNavigationLabel(): string
                         ->description(fn(Ticket $record): ?string => $record?->created_by == 1 ? __('TS') : __('Client'))
                         ->translateLabel()
                         ->toggleable(),
-                            Tables\Columns\TextColumn::make('status')
+                        Tables\Columns\TextColumn::make('status')
                                 ->badge()
                                 ->toggleable()
                                 ->translateLabel()
@@ -328,15 +316,19 @@ public static function getNavigationLabel(): string
 
                 // Status filter (replaces SelectConstraint)
                 Tables\Filters\SelectFilter::make('status')
-                    ->options(self::$model::STATUS)
+                    ->translateLabel()
+                    ->options(
+                        array_map(fn ($value) => __($value), self::$model::STATUS)
+                    )
                     ->searchable()
                     ->multiple(), // Allows selecting multiple statuses
 
                 // isUrgent filter (replaces BooleanConstraint)
                 Tables\Filters\TernaryFilter::make('isUrgent')
                     ->label('Urgent Tickets')
-                    ->trueLabel('Only Urgent')
-                    ->falseLabel('Only Normal')
+                    ->translateLabel()
+                    ->trueLabel(__('Only Urgent'))
+                    ->falseLabel(__('Only Normal'))
                     ->queries(
                         true: fn (Builder $query) => $query->where('isUrgent', true),
                         false: fn (Builder $query) => $query->where('isUrgent', false),
@@ -346,12 +338,15 @@ public static function getNavigationLabel(): string
                 // Client filter (replaces SelectConstraint)
                 Tables\Filters\SelectFilter::make('client_id')
                     ->label('Client')
+                    ->translateLabel()
                     ->searchable()
                     ->options(Client::all()->pluck('name', 'user_id'))
+                    ->hidden(fn () => auth()->user()->hasRole('Client'))
                     ->multiple(), // Allows selecting multiple clients
 
                 // Assigned To filter (replaces SelectConstraint)
                 Tables\Filters\SelectFilter::make('assigned_to')
+                    ->translateLabel()
                     ->label('Assigned To')
                     ->searchable()
                     ->options(function () {
@@ -372,8 +367,9 @@ public static function getNavigationLabel(): string
                     ->hidden(fn () => !auth()->user()->hasAnyRole(['super admin', 'Head'])),
                 Tables\Filters\TernaryFilter::make('all_tickets')
                     ->label('Show All Tickets')
-                    ->trueLabel('All Tickets')
-                    ->falseLabel('Current Year Only')
+                    ->translateLabel()
+                    ->trueLabel(__('All Tickets'))
+                    ->falseLabel(__('Current Year Only'))
                     ->queries(
                         true: fn (Builder $query) => $query,
                         false: fn (Builder $query) => $query->whereYear('created_at', now()->year),
@@ -405,6 +401,8 @@ public static function getNavigationLabel(): string
                             );
                     }),
                 Filter::make('solved_by_me')
+                    ->label('solved by me')
+                    ->translateLabel()
                     ->toggle()
                     ->query(fn (Builder $query): Builder => $query->where('solved_by', auth()->id()))
                     ->hidden(fn () => !auth()->user()->hasAnyRole(['admin', 'Head'])),
@@ -438,14 +436,18 @@ public static function getNavigationLabel(): string
                 $query->whereNotNull('service_id');
             }
         } else {
+            // Regular users can only see their own records
             $query->where('client_id', $user->id);
         }
 
         return $query
-            ->orderByRaw('CASE WHEN status = 2 THEN 0 ELSE 1 END')
-            ->orderBy('created_at', 'desc')
-            ->orderBy('isUrgent', 'desc')
-            ->orderBy('status', 'desc');
+            ->orderByRaw('CASE WHEN assigned_to = ? AND status = 3 and isUrgent=1 THEN 0 ELSE 1 END', [$user->id])
+            ->orderByRaw('CASE WHEN assigned_to = ? AND status = 3 and isUrgent=0 THEN 0 ELSE 1 END', [$user->id]) // First priority: assigned to me AND status=2
+            ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 1 THEN 0 ELSE 1 END')
+            ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 0 THEN 0 ELSE 1 END')
+            ->orderByRaw('CASE WHEN status = 3 THEN 0 ELSE 1 END') // Fourth priority: status=1
+            ->orderBy('created_at', 'desc') // Within each group, newest first
+            ->orderBy('isUrgent', 'desc'); // Then urgent first within same creation date
     }
     static function getRelations(): array
     {

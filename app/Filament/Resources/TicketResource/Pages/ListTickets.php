@@ -4,6 +4,7 @@ namespace App\Filament\Resources\TicketResource\Pages;
 
 use App\Exports\UserTicketExport;
 use App\Filament\Resources\TicketResource;
+use App\Imports\assignedImport;
 use App\Imports\TicketImport;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
@@ -54,6 +55,40 @@ class ListTickets extends ListRecords
                         Notification::make()
                             ->title('Import Successful')
                             ->body('Tickets have been successfully imported.')
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+
+                        Notification::make()
+                            ->title('Import Failed')
+                            ->body('There was an error importing the tickets: ' . $e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                })
+                ->icon('heroicon-o-arrow-up-tray'),
+
+            Actions\Action::make('Import appointed')
+                ->form([
+                    FileUpload::make('file')
+                        ->label('Select file to import')
+                        ->disk('local') // Ensures file is uploaded to local storage
+                        ->directory('temp') // Stores the file in a temporary directory
+                        ->required(),
+                ])
+                ->visible(auth()->user()->hasRole('super admin'))
+                ->label('import Appointed')
+                ->action(function (array $data) {
+                    try {
+                        if (isset($data['file'])) {
+
+                            Excel::import(new assignedImport(), $data['file']);
+                        } else {
+                            throw new \Exception('File upload failed.');
+                        }
+                        Notification::make()
+                            ->title('Import Successful')
+                            ->body('appointed have been successfully imported.')
                             ->success()
                             ->send();
                     } catch (\Exception $e) {
