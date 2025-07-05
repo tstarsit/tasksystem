@@ -23,21 +23,19 @@ class TicketStat extends StatsOverviewWidget
 
         // Get the count for each status
         $pendingCount = $queryWithoutStatus->clone()->where('status', 2)->count();
-        $resolvedCount = $queryWithoutStatus->clone()->where('status', 1)->count();
-        $inProgressCount = $queryWithoutStatus->clone()->where('status', 3)->count();
-        $paidCount = $queryWithoutStatus->clone()->where('status', 4)->count();
+        $pendingCountUser = $queryWithoutStatus->clone()->where('status', 3)->where('assigned_to',auth()->id())->count();
+        $resolvedCount = $queryWithoutStatus->clone()->where('status', 1)->where('solved_by',auth()->id())->count();
 
         return [
-            Stat::make(__('Pending Orders'), $pendingCount)
-                ->color('primary')
+            Stat::make(__('Pending Orders for '.Ticket::SYSTEM[auth()->user()->admin->system_id]), $pendingCount)
+                ->color('primary'),
+                  Stat::make(__('Pending Orders'), $pendingCountUser)
+                      ->color('primary')
 
                 ->icon('heroicon-o-clock'),
             Stat::make(__('Resolved Orders'), $resolvedCount)
                 ->icon('heroicon-o-check-circle'),
-            Stat::make(__('In Progress Orders'), $inProgressCount)
-            ->icon('heroicon-m-arrow-path'),
-            Stat::make(__('Paid Orders'), $paidCount)
-            ->icon('heroicon-o-currency-dollar'),
+
         ];
     }
     protected function getTablePage(): string

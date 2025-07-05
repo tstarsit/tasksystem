@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(CustomLogin::class)
-            ->colors([
+             ->colors([
                 'primary' => [
                     50=>'rgb(248, 250, 252)',
                     100 => 'rgb(230, 235, 240)',  // Darker Gray

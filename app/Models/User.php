@@ -54,6 +54,7 @@ class User extends Authenticatable implements HasName,FilamentUser
         'name',
         'email',
         'password',
+        'username'
     ];
 
     /**
