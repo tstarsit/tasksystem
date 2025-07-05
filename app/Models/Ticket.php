@@ -126,6 +126,10 @@ class Ticket extends Model
         return $this->where('isCanceled',0);
     }
 
+    public function solver()
+    {
+        return $this->belongsTo(Admin::class, 'solved_by','user_id');
+    }
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id', 'user_id');

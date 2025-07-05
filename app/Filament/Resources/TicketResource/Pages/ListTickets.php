@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\TicketResource\Pages;
 
-use App\Exports\TicketExport;
+use App\Exports\UserTicketExport;
 use App\Filament\Resources\TicketResource;
 use App\Imports\TicketImport;
 use Filament\Actions;
@@ -11,9 +11,6 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Tables\Table;
-use Illuminate\Support\Facades\Storage;
-use JetBrains\PhpStorm\NoReturn;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ListTickets extends ListRecords
@@ -74,7 +71,7 @@ class ListTickets extends ListRecords
                 ->label('')
                 ->visible(auth()->user()->hasRole('super admin'))
                 ->action(function () {
-                    return Excel::download(new TicketExport, 'tickets.xlsx');
+                    return Excel::download(new UserTicketExport, 'tickets.xlsx');
                 })->icon('icon-excel')
 
         ];

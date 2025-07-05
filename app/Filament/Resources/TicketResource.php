@@ -6,6 +6,10 @@ use AlperenErsoy\FilamentExport\Actions\FilamentExportHeaderAction;
 use App\Filament\Resources\TicketResource\Pages;
 use App\Models\Admin;
 use App\Models\Client;
+use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\Filter;
+use Illuminate\Contracts\Pagination\CursorPaginator;
+use Illuminate\Database\Eloquent\Builder;
 use App\Models\Ticket;
 use App\Providers\Filament\MYPDF;
 use Filament\Forms;
@@ -24,10 +28,10 @@ use Filament\Tables;
 
 use Filament\Tables\Filters\QueryBuilder\Constraints\BooleanConstraint;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Carbon;
+use JetBrains\PhpStorm\NoReturn;
 use PDF;
 use TCPDF;
 use TCPDF_FONTS;
@@ -44,13 +48,23 @@ class TicketResource extends Resource
     {
         $user = auth()->user();
 
-        return match (true) {
-            $user->hasRole('Client') => Ticket::where('client_id', $user->id)->where('status',2)->count(),
-            $user->hasRole('admin') => Ticket::withTrashed()->where('system_id', $user->admin->system_id)->where('status',2)->count(),
-            $user->hasRole('Head') => Ticket::withTrashed()->where('system_id', $user->admin->system_id)->where('status',2)->count(),
-            $user->hasRole('super admin') => Ticket::withTrashed()->where('status',2)->count(), // Super admin sees all tickets
-            default => null, // No badge for other roles
-        };
+        // Check roles in order of highest privilege first
+        if ($user->hasRole('super admin')) {
+            return Ticket::withTrashed()->where('status', 2)->count();
+        }
+
+        if ($user->hasRole('Client')) {
+            return Ticket::where('client_id', $user->id)->where('status', 2)->count();
+        }
+
+        if ($user->hasRole('admin') || $user->hasRole('Head')) {
+            return Ticket::withTrashed()
+                ->where('system_id', $user->admin->system_id)
+                ->where('status', 2)
+                ->count();
+        }
+
+        return null; // No badge for other roles
     }
 
 public static function getNavigationLabel(): string
@@ -186,17 +200,22 @@ public static function getNavigationLabel(): string
             ]);
     }
 
+
+
     /**
      * @throws \Exception
      */
     public static function table(Table $table): Table
     {
-        $query = self::getQueryBasedOnUserRole();
 
         return $table
-            ->query($query)
-            ->poll('5s')
-                ->columns([
+            ->query(function () {
+
+                return static::getQueryBasedOnUserRole();
+            })
+            ->persistFiltersInSession()
+            ->defaultPaginationPageOption(25)
+            ->columns([
                     Tables\Columns\TextColumn::make('client.name')
                         ->label('Client')
                         ->description(fn (Ticket $record): ?string => __($record?->system_name) ?? null)
@@ -254,6 +273,7 @@ public static function getNavigationLabel(): string
                                     };
                                 })
                                 ->formatStateUsing(function ($record,$state) {
+
                                     return [
                                         1 => auth()->user()->type == 1
                                             ? ($record->solved_by ? __('Resolved by') . ' ' . $record->admin->name : '')
@@ -264,7 +284,7 @@ public static function getNavigationLabel(): string
                                         4 => __('Paid'),
                                     ][$state] ?? 'Unknown';
                                 }),
-                            Tables\Columns\TextColumn::make('delivered_date')
+                             Tables\Columns\TextColumn::make('delivered_date')
                                 ->date('d/m/Y')
                                 ->translateLabel()
                                 ->toggleable(),
@@ -298,44 +318,96 @@ public static function getNavigationLabel(): string
 
         ])
             ->filters([
-
                 Tables\Filters\TrashedFilter::make('deleted_at'),
+
                 Tables\Filters\SelectFilter::make('system_id')
-                                ->label('System')
-                                ->searchable()
-                                ->options(self::$model::SYSTEM)
-                                ->hidden(fn () => !auth()->user()->hasRole('super admin')),
-                Tables\Filters\QueryBuilder::make()
-                    ->constraints([
-                        Tables\Filters\QueryBuilder\Constraints\SelectConstraint::make('status')
-                            ->options(self::$model::STATUS),
-                        BooleanConstraint::make('isUrgent'),
-                        Tables\Filters\QueryBuilder\Constraints\SelectConstraint::make('client_id')
-                            ->label('client')
-                            ->searchable()
-                            ->options(Client::all()->pluck('name', 'user_id')),
-                        Tables\Filters\QueryBuilder\Constraints\SelectConstraint::make('assigned_to')
-                            ->options(function (){
-                                $user = auth()->user();
+                    ->label('System')
+                    ->searchable()
+                    ->options(self::$model::SYSTEM)
+                    ->hidden(fn () => !auth()->user()->hasRole('super admin')),
 
-                                // Super Admin: Show all admins
-                                if ($user->hasRole('super admin')) {
-                                    return Admin::active()->pluck('name', 'user_id');
-                                }
+                // Status filter (replaces SelectConstraint)
+                Tables\Filters\SelectFilter::make('status')
+                    ->options(self::$model::STATUS)
+                    ->searchable()
+                    ->multiple(), // Allows selecting multiple statuses
 
-                                // Head: Show admins with the same system_id
-                                if ($user->hasRole('Head')) {
-                                    return Admin::where('system_id', $user->admin->system_id)
-                                        ->active()
-                                        ->pluck('name', 'user_id');
-                                }
+                // isUrgent filter (replaces BooleanConstraint)
+                Tables\Filters\TernaryFilter::make('isUrgent')
+                    ->label('Urgent Tickets')
+                    ->trueLabel('Only Urgent')
+                    ->falseLabel('Only Normal')
+                    ->queries(
+                        true: fn (Builder $query) => $query->where('isUrgent', true),
+                        false: fn (Builder $query) => $query->where('isUrgent', false),
+                        blank: fn (Builder $query) => $query,
+                    ),
 
-                                // Admin and Client: Don't show the filter
-                                return [];
-                            })
-                            ->searchable(),
-                            Tables\Filters\QueryBuilder\Constraints\DateConstraint::make('created_at'),
-                    ])->constraintPickerColumns(2),
+                // Client filter (replaces SelectConstraint)
+                Tables\Filters\SelectFilter::make('client_id')
+                    ->label('Client')
+                    ->searchable()
+                    ->options(Client::all()->pluck('name', 'user_id'))
+                    ->multiple(), // Allows selecting multiple clients
+
+                // Assigned To filter (replaces SelectConstraint)
+                Tables\Filters\SelectFilter::make('assigned_to')
+                    ->label('Assigned To')
+                    ->searchable()
+                    ->options(function () {
+                        $user = auth()->user();
+
+                        if ($user->hasRole('super admin')) {
+                            return Admin::active()->pluck('name', 'user_id');
+                        }
+
+                        if ($user->hasRole('Head')) {
+                            return Admin::where('system_id', $user->admin->system_id)
+                                ->active()
+                                ->pluck('name', 'user_id');
+                        }
+
+                        return [];
+                    })
+                    ->hidden(fn () => !auth()->user()->hasAnyRole(['super admin', 'Head'])),
+                Tables\Filters\TernaryFilter::make('all_tickets')
+                    ->label('Show All Tickets')
+                    ->trueLabel('All Tickets')
+                    ->falseLabel('Current Year Only')
+                    ->queries(
+                        true: fn (Builder $query) => $query,
+                        false: fn (Builder $query) => $query->whereYear('created_at', now()->year),
+                        blank: fn (Builder $query) => $query->whereYear('created_at', now()->year),
+                    )
+                    ->default(false),
+                // Date range filter (new addition)
+                Filter::make('created_at')
+                    ->form([
+                        Grid::make(2) // This creates a 2-column grid
+                        ->schema([
+                            DatePicker::make('created_from')
+                                ->label(__('From Date'))
+                                ->columnSpan(1), // Each date picker takes full width of its column
+                            DatePicker::make('created_until')
+                                ->label(__('To Date'))
+                                ->columnSpan(1),
+                        ]),
+                    ])->columnSpan(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['created_from'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['created_until'],
+                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                            );
+                    }),
+                Filter::make('solved_by_me')
+                    ->toggle()
+                    ->query(fn (Builder $query): Builder => $query->where('solved_by', auth()->id()))
+                    ->hidden(fn () => !auth()->user()->hasAnyRole(['admin', 'Head'])),
             ], layout: Tables\Enums\FiltersLayout::AboveContentCollapsible)
             ->actions([
                 Tables\Actions\EditAction::make()
@@ -349,44 +421,29 @@ public static function getNavigationLabel(): string
             ]);
     }
 
-    private static function getQueryBasedOnUserRole()
+    private static function getQueryBasedOnUserRole(): Builder
     {
         $user = auth()->user();
+        // Start with base query
+        $query = Ticket::query()
+            ->withTrashed();
 
+        // Apply role-specific conditions
         if ($user->hasRole('super admin')) {
-            return Ticket::query()
-                ->select('id', 'system_id', 'client_id', 'service_id', 'solved_by', 'assigned_to', 'status', 'description', 'solution', 'recommendation', 'accepted_date', 'deleted_at', 'delivered_date', 'isUrgent', 'created_by', 'created_at')
-                ->withTrashed()
-                ->orderByRaw('CASE WHEN status = 2 THEN 0 ELSE 1 END')
-                ->orderBy('created_at', 'desc')
-                ->orderBy('isUrgent', 'desc')
-                ->orderBy('status', 'desc');
-        }
-
-        if ($user->hasRole('Head') || $user->hasRole('admin')) {
+            // No additional conditions for super admin
+        } elseif ($user->hasRole('Head') || $user->hasRole('admin')) {
             $systemId = $user->admin->system_id;
-
-            // Start the query for Head or Admin
-            $query = Ticket::where('system_id', $systemId)
-                ->withTrashed()
-                ->orderByRaw('CASE WHEN status = 2 THEN 0 ELSE 1 END')
-                ->orderBy('created_at', 'desc')
-                ->orderBy('isUrgent', 'desc')
-                ->orderBy('status', 'desc');
-
-            // Check if the user is an admin and service_id is set (in the query)
+            $query->where('system_id', $systemId);
             if ($user->hasRole('admin')) {
                 $query->whereNotNull('service_id');
             }
-
-            return $query;
+        } else {
+            $query->where('client_id', $user->id);
         }
 
-        return Ticket::query()
-            ->where('client_id', $user->id)
-            ->withTrashed()
+        return $query
             ->orderByRaw('CASE WHEN status = 2 THEN 0 ELSE 1 END')
-            ->orderBy('created_at', 'desc') // Latest tickets first
+            ->orderBy('created_at', 'desc')
             ->orderBy('isUrgent', 'desc')
             ->orderBy('status', 'desc');
     }
