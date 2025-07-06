@@ -108,7 +108,7 @@ class ListTickets extends ListRecords
                 ->label('')
                 ->visible(auth()->user()->hasRole('super admin'))
                 ->action(function () {
-                    return Excel::download(new UserTicketExport, 'tickets.xlsx');
+                    return Excel::download(new UserTicketExport(), 'tickets.xlsx');
                 })->icon('icon-excel')
 
         ];

@@ -18,6 +18,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use PHPUnit\Event\Telemetry\System;
 
@@ -55,7 +56,27 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
         return auth()->user()->hasPermissionTo('page_UserTickets');
     }
 
+    public function getFilteredTableQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = $this->getTableQuery()->withTrashed();
 
+        // Apply the role-based filter
+        if ($this->role === 'client') {
+            $query->where('client_id', $this->selectedUser);
+        } elseif ($this->role === 'admin') {
+            $query->where('solved_by', $this->selectedUser);
+        }
+
+        // Apply all active table filters
+        foreach ($this->getTableFilters() as $filter) {
+            $filter->apply(
+                $query,
+                $this->tableFilters[$filter->getName()] ?? []
+            );
+        }
+
+        return $query;
+    }
 
 
     public function mount(): void
@@ -96,7 +117,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
     }
     public function getTicketStats(): array
     {
-        if (! $this->selectedUser) {
+        if (!$this->selectedUser) {
             return [
                 'total' => 0,
                 'pending' => 0,
@@ -106,18 +127,10 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
             ];
         }
 
-        // Start with base query and include trashed upfront
-        $query = Ticket::withTrashed();
+        // Get the base query with all applied filters
+        $query = $this->getFilteredTableQuery();
 
-
-        // Apply the filter based on role
-        if ($this->role === 'client') {
-            $query->where('client_id', $this->selectedUser);
-        } elseif ($this->role === 'admin') {
-            $query->where('solved_by', $this->selectedUser);
-        }
-
-        // Clone AFTER setting withTrashed + filters
+        // Clone for individual counts
         $baseQuery = clone $query;
 
         return [
@@ -128,7 +141,6 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
             'deleted' => (clone $baseQuery)->whereNotNull('deleted_at')->count(),
         ];
     }
-
     protected function getUserOptions()
     {
         return match ($this->role) {
@@ -205,10 +217,14 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                         return null;
                     }
 
+                    // Convert string dates to DateTime objects
+                    $from = $data['created_from'] ? Carbon::parse($data['created_from']) : null;
+                    $until = $data['created_until'] ? Carbon::parse($data['created_until']) : null;
+
                     return 'Date range: ' .
-                        ($data['created_from'] ? $data['created_from']->format('M j, Y') : '∞') .
+                        ($from ? $from->format('M j, Y') : '∞') .
                         ' - ' .
-                        ($data['created_until'] ? $data['created_until']->format('M j, Y') : '∞');
+                        ($until ? $until->format('M j, Y') : '∞');
                 }),
 
             Tables\Filters\Filter::make('is_urgent')
@@ -301,10 +317,12 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
     {
         return [
             Action::make('export')
+                ->label('Export')
+                ->translateLabel()
                 ->icon('icon-excel')
                 ->action(function () {
                     return Excel::download(
-                        new UserTicketExport($this->getTableQuery()->get()),
+                        new UserTicketExport($this->filterTableQuery($this->getTableQuery())->get()),
                         'user-tickets-'.now()->format('Y-m-d').'.xlsx'
                     );
                 })

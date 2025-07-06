@@ -23,8 +23,7 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
             $createdAt = $this->parseDate($row['cr_date'] ?? null, 'cr_date');
 
             $deliveredDate = $this->parseDate($row['delivered_date'] ?? null, 'delivered_date');
-            $acceptedDate = $this->parseDate($row['received_date'] ?? null, 'received_date');
-
+            $acceptedDate = $this->parseDate($row['received_date'] ?? $row['cr_date'] ?? null, 'received_date');
             $excelSystemId = $row['sys_id'];
             $excelToSystemIdMap = [4 => 1, 3 => 3, 2 => 2, 5 => 4];
             if (!array_key_exists($excelSystemId, $excelToSystemIdMap)) {
@@ -33,9 +32,10 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
             $systemId = $excelToSystemIdMap[$excelSystemId];
 
             // Determine status
-            $status = !empty($deliveredDate) ? 1 :
-                (!empty($acceptedDate) ? 3 :
-                    ($row['service_id'] == 2 ? 4 : 2));
+            $status = !empty($deliveredDate) ? 1 : // Delivered
+                (!empty($acceptedDate) ? 3 : // Accepted
+                    ($row['service_id'] == 2 ? 4 : // Special case for service_id 2
+                        ($row['service_id'] == 1 && empty($solution) ? 3 : 2))); // service_id=1 + no solution → Accepted, else Pending
 
             $isUrgent = $row['priority'] == 1 ? 0 : 1;
 
@@ -77,12 +77,13 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
             // Determine solved_by with mapping applied to both su_id and lu_user
             $solvedBy = null;
 
-            if (isset($row['lu_user'])) {
+            if (isset($row['lu_user']) && !empty($row['task_solution'])) {
                 $solvedBy = $solvedByMapping[$row['lu_user']] ?? $row['lu_user'];
-            } elseif (isset($row['su_id'])) {
-                $solvedBy = $solvedByMapping[$row['su_id']] ?? $row['su_id'];
             }
-
+// Case 2: lu_user is empty/null BUT task_solution has a value → Use su_id
+            elseif (empty($row['lu_user']) && !empty($row['task_solution'])) {
+                $solvedBy= $solvedByMapping[$row['su_id']] ?? $row['su_id'];
+            }
             // Validate solved_by exists if required
             if ($solvedBy !== null && !DB::table('users')->where('id', $solvedBy)->exists()) {
                 throw new \Exception("User ID {$solvedBy} does not exist in users table");
@@ -123,18 +124,17 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
     private function parseDate($dateValue, $fieldName)
     {
         try {
-            // Handle null or empty values
             if (empty($dateValue)) {
                 return null;
             }
 
-            // Handle numeric (Excel serial date)
+            // Handle Excel serial dates
             if (is_numeric($dateValue)) {
                 return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($dateValue)
                     ->format('Y-m-d H:i:s');
             }
 
-            // Handle Arabic date strings (e.g., "21-فبراير-2023")
+            // Handle Arabic dates (e.g., "21-فبراير-2023")
             if (is_string($dateValue) && preg_match('/(\d{1,2})-(.*?)-(\d{4})/', $dateValue, $matches)) {
                 $day = $matches[1];
                 $arabicMonth = $matches[2];
@@ -152,16 +152,30 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
                 }
             }
 
-            // Handle other string formats as fallback
-            if (is_string($dateValue)) {
-                // Try Carbon's parse which is more flexible
-                try {
-                    return Carbon::parse($dateValue)->format('Y-m-d H:i:s');
-                } catch (\Exception $e) {
-                    // Try cleaning the string if parsing fails
-                    $dateValue = $this->cleanDateString($dateValue);
-                    return Carbon::parse($dateValue)->format('Y-m-d H:i:s');
+            // Handle day/month/year formats (e.g., "22/08/2023" or "20/05/0025")
+            if (is_string($dateValue) && preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/', $dateValue, $matches)) {
+                $day = $matches[1];
+                $month = $matches[2];
+                $year = $matches[3];
+
+                // Fix 2-digit years (e.g., "25" → "2025")
+                if (strlen($year) === 2) {
+                    $year = ($year <= 25) ? "20$year" : "19$year";
                 }
+                // Fix 4-digit years that are too short (e.g., "0025" → "2025")
+                elseif (strlen($year) === 4 && $year < 1900) {
+                    $year = "20" . substr($year, -2); // "0025" → "2025"
+                }
+
+                return Carbon::create($year, $month, $day)->format('Y-m-d H:i:s');
+            }
+
+            // Fallback: Try Carbon's built-in parser
+            try {
+                return Carbon::parse($dateValue)->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                $dateValue = $this->cleanDateString($dateValue);
+                return Carbon::parse($dateValue)->format('Y-m-d H:i:s');
             }
 
             throw new \Exception("Invalid date format for $fieldName: " . json_encode($dateValue));

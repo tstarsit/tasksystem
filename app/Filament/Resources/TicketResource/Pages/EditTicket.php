@@ -62,9 +62,7 @@ class EditTicket extends EditRecord
                     ->cols(20)
                     ->translateLabel()
                     ->visible(fn () => auth()->user()->hasAnyRole(['Head', 'super admin', 'admin']))
-                    ->disabled(fn ($get) =>
-                        filled($get('delivered_date')) && $get('solved_by') !== auth()->id()
-                    ),
+
             ])->columnSpan(1),
 
             Grid::make(2)
@@ -128,8 +126,8 @@ class EditTicket extends EditRecord
                     ->label('Accepted Date')
                     ->translateLabel()
                     ->native(false)
-                    ->displayFormat('d/m/Y H:i') // How it displays to users
-                    ->format('Y-m-d H:i:s')      // How it stores in database
+                    ->displayFormat('d/m/Y') // How it displays to users
+                    ->format('Y-m-d')      // How it stores in database
                     ->seconds(false)
                     ->visibleOn('edit')
                     ->visible(auth()->user()->hasAnyRole(['Head', 'super admin']))
@@ -140,8 +138,8 @@ class EditTicket extends EditRecord
                     ->label('Delievered Date')
                     ->translateLabel()
                     ->native(false)
-                    ->format('d-m-Y H:i')
-                    ->displayFormat('d/m/Y H:i')
+                    ->format('d-m-Y')
+                    ->displayFormat('d/m/Y')
                     ->seconds(false)
                     ->visibleOn('edit')
                     ->visible(!auth()->user()->hasRole('client')),

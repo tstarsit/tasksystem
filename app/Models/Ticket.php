@@ -109,7 +109,6 @@ class Ticket extends Model
         4 => 'Paid',
     ];
     const  SERVICES = [
-
         1 => 'Maintenance',
         2 => 'Request',
         3 => 'Development',
