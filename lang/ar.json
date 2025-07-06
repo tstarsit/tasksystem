@@ -39,8 +39,8 @@
     "Total Requests": "إجمالي الطلبات",
     "Total Maintenance": "إجمالي الصيانة",
     "open": "فتح",
-    "Decreasing by": "تناقص بمقدار",
-    "Increasing by": "زيادة بمقدار",
+    "Decreasing by ": "تناقص بمقدار ",
+    "Increasing by ": "زيادة بمقدار ",
     "Resolved": "تم الحل",
     "Pending": "معلق",
     "In Progress": "قيد التنفيذ",
@@ -90,8 +90,11 @@
     "Service": "نوع الطلب",
     "Accepted Date": "تاريخ قبول الطلب",
     "Select Role": "نوع المستخدم",
-    "Select User": "المستخدم"
-
-
-
+    "Select User": "المستخدم",
+    "User": "مستخدم",
+    "Clients": "العملاء",
+    "Soft Deleted Tickets": "المهام المحذوفة",
+    "Last week": "الأسبوع الأخير",
+    "Last month": "الشهر الأخير",
+    "This year": "السنة الحالية"
 }
