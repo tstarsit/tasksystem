@@ -27,6 +27,8 @@ class ListTickets extends ListRecords
         return 'full';
     }
 
+
+
     protected function getHeaderActions(): array
     {
         return [

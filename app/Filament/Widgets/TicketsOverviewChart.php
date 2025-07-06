@@ -7,13 +7,18 @@ use App\Models\Ticket;
 use Filament\Widgets\ChartWidget;
 use Flowframe\Trend\Trend;
 use Flowframe\Trend\TrendValue;
+use Illuminate\Contracts\Support\Htmlable;
 
 class TicketsOverviewChart extends ChartWidget
 {
-    protected static ?string $heading = 'Tickets';
+
+
     protected static ?int $sort = 2;
     public ?string $filter = 'week';
-
+public function getHeading(): string|Htmlable|null
+{
+    return __('Tickets');
+}
 
 //public static function canView(): bool
 //{
@@ -26,9 +31,9 @@ class TicketsOverviewChart extends ChartWidget
     protected function getFilters(): ?array
     {
         return [
-            'week' => 'Last week',
-            'month' => 'Last month',
-            'year' => 'This year',
+            'week' => __('Last week'),
+            'month' => __('Last month'),
+            'year' => __('This year'),
         ];
     }
 

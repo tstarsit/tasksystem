@@ -16,6 +16,10 @@ class ListUsers extends ListRecords
 {
     protected static string $resource = UserResource::class;
     protected ?string $maxContentWidth='full';
+    public function getModelLabel(): ?string
+    {
+        return __('User');
+    }
     protected function getHeaderActions(): array
     {
         return [
@@ -58,7 +62,9 @@ class ListUsers extends ListRecords
                         ->required(),
                 ])
                 ->label('Clients')
+                ->translateLabel()
                 ->action(function (array $data) {
+
                     try {
                         if (isset($data['file'])) {
 
@@ -80,7 +86,7 @@ class ListUsers extends ListRecords
                     }
                 })->icon('heroicon-o-arrow-up-tray'),
             Actions\CreateAction::make()
-            ->translateLabel(),
+
         ];
     }
 }
