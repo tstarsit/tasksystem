@@ -205,10 +205,12 @@ public static function getNavigationLabel(): string
             ->defaultPaginationPageOption(25)
             ->columns([
                     Tables\Columns\TextColumn::make('client.name')
+                        ->sortable()
                         ->label('Client')
                         ->description(fn (Ticket $record): ?string => __($record?->system_name) ?? null)
                         ->translateLabel()
                         ->extraAttributes(function (Ticket $ticket) {
+
                             if ($ticket->isUrgent && $ticket->assigned_to == auth()->id()) {
                                 return [
                                     'class' => 'dark:bg-purple rounded-lg rounded bg-purple', // Specific color for both conditions
@@ -224,6 +226,7 @@ public static function getNavigationLabel(): string
 
                             // Check if the ticket is assigned to the current user
                             if ($ticket->assigned_to == auth()->id()) {
+
                                 return [
                                     'class' => 'dark:bg-success rounded-lg rounded bg-success', // Color for assigned tickets
                                 ];
@@ -260,18 +263,36 @@ public static function getNavigationLabel(): string
                                         default => 'secondary', // Default color if status is not found
                                     };
                                 })
-                                ->formatStateUsing(function ($record,$state) {
-
+                            ->formatStateUsing(function ($record, $state) {
+                                try {
                                     return [
                                         1 => auth()->user()->type == 1
                                             ? ($record->solved_by ? __('Resolved by') . ' ' . $record->admin->name : '')
                                             : __('Resolved'),
-//                                    1=>__('Resolved by'),
                                         2 => __('Pending'),
                                         3 => __('In Progress'),
                                         4 => __('Paid'),
                                     ][$state] ?? 'Unknown';
-                                }),
+                                } catch (\Exception $e) {
+                                    // Dump everything important when an error occurs
+                                    dd([
+                                        'error' => $e->getMessage(),
+                                        'state' => $state,
+                                        'record' => $record,
+                                        'record_attributes' => $record->getAttributes(), // Gets all model attributes
+                                        'auth_user' => auth()->user(),
+                                        'relationships' => [
+                                            'admin_exists' => isset($record->admin),
+                                            'admin_loaded' => $record->relationLoaded('admin'),
+                                            'admin_data' => $record->admin ?? null,
+                                        ],
+                                        'translations' => [
+                                            'resolved' => __('Resolved'),
+                                            'resolved_by' => __('Resolved by'),
+                                        ],
+                                    ]);
+                                }
+                            }),
                              Tables\Columns\TextColumn::make('delivered_date')
                                 ->date('d/m/Y')
                                 ->translateLabel()
@@ -446,7 +467,7 @@ public static function getNavigationLabel(): string
             ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 1 THEN 0 ELSE 1 END')
             ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 0 THEN 0 ELSE 1 END')
             ->orderByRaw('CASE WHEN status = 3 THEN 0 ELSE 1 END') // Fourth priority: status=1
-            ->orderBy('created_at', 'desc') // Within each group, newest first
+            ->orderBy('created_at', 'desc') // Within each group, newest firs
             ->orderBy('isUrgent', 'desc'); // Then urgent first within same creation date
     }
     static function getRelations(): array

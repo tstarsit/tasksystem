@@ -43,7 +43,7 @@ class UserTicketExport implements FromCollection, WithHeadings, WithMapping
             $ticket->client->name ?? 'N/A',
             $ticket->system_name,
             $ticket->description,
-            $this->getStatusText($ticket->status),
+            __($this->getStatusText($ticket->status)),
             $ticket->created_at,
             $ticket->delivered_date ? $ticket->delivered_date : 'N/A',
             $ticket->solution,
