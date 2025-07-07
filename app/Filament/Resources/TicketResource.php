@@ -333,7 +333,7 @@ public static function getNavigationLabel(): string
                     ->label('System')
                     ->searchable()
                     ->options(self::$model::SYSTEM)
-                    ->hidden(fn () => !auth()->user()->hasRole('super admin')),
+                    ->hidden(fn () => !auth()->user()->hasAnyRole(['super admin','Client'])),
 
                 // Status filter (replaces SelectConstraint)
                 Tables\Filters\SelectFilter::make('status')
@@ -414,11 +414,11 @@ public static function getNavigationLabel(): string
                         return $query
                             ->when(
                                 $data['created_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '>=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('delivered_date', '>=', $date),
                             )
                             ->when(
                                 $data['created_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('created_at', '<=', $date),
+                                fn (Builder $query, $date): Builder => $query->whereDate('delivered_date', '<=', $date),
                             );
                     }),
                 Filter::make('solved_by_me')
