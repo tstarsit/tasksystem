@@ -28,7 +28,8 @@ class CreateTicket extends CreateRecord
         if (!empty($data['solution'])) {
             $record->delivered_date = now();
             $record->solved_by=auth()->id();
-            $record->status = 1; // Solved
+            $record->status = 1;
+            $record->accepted_date = now();// Solved
         } elseif (!empty($data['service_id'])) {
             $record->accepted_date = now();
             $record->status = 3; // Accepted

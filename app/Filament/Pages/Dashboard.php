@@ -27,7 +27,7 @@ class Dashboard extends BaseDashboard
 
         return $form
             ->schema([
-                Section::make('Filters')
+                Section::make(__('Filters'))
                     ->schema([
                         DatePicker::make('startDate')
                             ->label('Start Date')
