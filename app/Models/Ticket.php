@@ -98,7 +98,7 @@ class Ticket extends Model
         '1' => 'NAS',
         '2' => 'DINAR',
         '3' => 'BEE',
-        '4' => 'SALAM',
+//        '4' => 'SALAM',
     ];
 
 
