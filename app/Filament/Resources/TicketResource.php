@@ -56,6 +56,7 @@ class TicketResource extends Resource
 
 public static function getNavigationLabel(): string
 {
+
     return __('Tickets');
 }
     public static function getPluralLabel(): ?string
@@ -331,8 +332,9 @@ public static function getNavigationLabel(): string
 
                 Tables\Filters\SelectFilter::make('system_id')
                     ->label('System')
+                    ->translateLabel()
                     ->searchable()
-                    ->options(self::$model::SYSTEM)
+                    ->options(array_map(fn ($value) => __($value), self::$model::SYSTEM))
                     ->hidden(fn () => !auth()->user()->hasAnyRole(['super admin','Client'])),
 
                 // Status filter (replaces SelectConstraint)
@@ -467,8 +469,8 @@ public static function getNavigationLabel(): string
             ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 1 THEN 0 ELSE 1 END')
             ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 0 THEN 0 ELSE 1 END')
             ->orderByRaw('CASE WHEN status = 3 THEN 0 ELSE 1 END') // Fourth priority: status=1
-            ->orderBy('created_at', 'desc') // Within each group, newest firs
-            ->orderBy('isUrgent', 'desc'); // Then urgent first within same creation date
+            ->orderBy('delivered_date', 'desc');
+
     }
     static function getRelations(): array
     {
