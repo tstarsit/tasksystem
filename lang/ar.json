@@ -89,7 +89,6 @@
     "Accepted Date": "تاريخ قبول الطلب",
     "Select Role": "نوع المستخدم",
     "Assigned Tasks": "المهام المكلفة",
-    "Delievered Date": "تاريخ التسليم",
     "Export": "تصدير",
     "Select User": "المستخدم",
     "User": "مستخدم",
@@ -99,5 +98,10 @@
     "Last month": "الشهر الأخير",
     "This year": "السنة الحالية",
     "Filters": "الفلتره",
-    "Latest Ticket": "اخر المهام"
+    "Latest Ticket": "اخر المهام",
+    "All Requests": "الطلبات المعلقة",
+    "Requested Tickets": "طلبات معلقة",
+    "Ticket assigned to you": "مهام مكلفة",
+    "Urgent ticket": "مهام طارئة",
+    "Urgent ticket assigned to you": "مهام طارئة ومكلفة"
 }

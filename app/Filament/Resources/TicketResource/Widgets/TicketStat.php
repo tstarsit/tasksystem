@@ -26,21 +26,26 @@ class TicketStat extends StatsOverviewWidget
         $pendingCountUser = $queryWithoutStatus->clone()->where('status', 3)->where('assigned_to',auth()->id())->count();
         $resolvedCount = $queryWithoutStatus->clone()->where('status', 1)->where('solved_by',auth()->id())->count();
         $inProgressCount = $queryWithoutStatus->clone()->where('status', 3)->count();
+        $requestCount = $queryWithoutStatus->clone()->where('service_id', 2)->whereNull('solution')->count();
 
         return [
 
             Stat::make(
                 __('Pending Tasks for ') . (auth()->user()->type == 1 ? __(Ticket::SYSTEM[auth()->user()->admin->system_id]) : __('all systems') ),
                 $pendingCountSystem
-            )                ->color('primary'),
-            Stat::make(__('In Progress Tasks'), $inProgressCount)
+            )                ->color('primary')
+                ->icon('heroicon-o-clock'),
+                        Stat::make(__('In Progress Tasks'), $inProgressCount)
+                ->color('primary')
+                ->icon('heroicon-o-clock'),
+            Stat::make(__('All Requests'), $requestCount)
                 ->color('primary')
                 ->icon('heroicon-o-clock'),
                   Stat::make(__('Assigned Tasks'), $pendingCountUser)
                       ->color('primary')
                 ->icon('heroicon-o-clock'),
             Stat::make(__('Resolved Tasks'), $resolvedCount)
-                ->icon('heroicon-o-check-circle'),
+                ->icon('heroicon-c-numbered-list'),
 
         ];
     }
