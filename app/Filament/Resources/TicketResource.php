@@ -6,6 +6,7 @@ use App\Filament\Resources\TicketResource\Pages;
 use App\Models\Admin;
 use App\Models\Client;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\View;
 use Filament\Tables\Filters\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\Ticket;
@@ -202,6 +203,9 @@ public static function getNavigationLabel(): string
 
                 return static::getQueryBasedOnUserRole();
             })
+            ->header(function () {
+                return view('livewire.legend-info');
+            })
             ->persistFiltersInSession()
             ->defaultPaginationPageOption(50)
             ->columns([
@@ -242,7 +246,15 @@ public static function getNavigationLabel(): string
                         ->description(fn(Ticket $record): ?string => $record?->created_by == 1 ? __('TS') : __('Client'))
                         ->translateLabel()
                         ->sortable()
-                        ->toggleable(),
+                        ->toggleable()
+                ->extraAttributes(function (Ticket $ticket) {
+                    if ($ticket->service_id==2 && $ticket->status==3) {
+                        return [
+                            'class' => 'dark:bg-gray-500/20 rounded-lg rounded bg-gray-200', // Specific color for both conditions
+                        ];
+                    }
+                    return [];
+                }),
                         Tables\Columns\TextColumn::make('status')
                                 ->badge()
                                 ->toggleable()
@@ -470,6 +482,7 @@ public static function getNavigationLabel(): string
             ->orderByRaw('CASE WHEN assigned_to = ? AND status = 3 and isUrgent=0 THEN 0 ELSE 1 END', [$user->id]) // First priority: assigned to me AND status=2
             ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 1 THEN 0 ELSE 1 END')
             ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 0 THEN 0 ELSE 1 END')
+            ->orderByRaw('CASE WHEN status = 3 AND isUrgent = 1 THEN 0 ELSE 1 END') // Fourth priority: status=1
             ->orderByRaw('CASE WHEN status = 3 THEN 0 ELSE 1 END') // Fourth priority: status=1
             ->orderBy('delivered_date', 'desc');
 

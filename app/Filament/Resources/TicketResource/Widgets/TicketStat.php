@@ -20,35 +20,34 @@ class TicketStat extends StatsOverviewWidget
         // Clone the base query and remove any 'status' conditions
         $queryWithoutStatus = $baseQuery->clone();
 
-        // Initialize stats array
-        $stats = [];
 
         // Get the count for each status
-        if (!auth()->user()->hasRole('Head')) {
-            $pendingCountSystem = $queryWithoutStatus->clone()->where('status', 2)->count();
-            $stats[] = Stat::make(
-                __('Pending Tasks for ') . (auth()->user()->type == 1 ? __(Ticket::SYSTEM[auth()->user()->admin->system_id]) : __('all systems')),
-                $pendingCountSystem
-            )->color('primary');
-        }
-
-        $pendingCountUser = $queryWithoutStatus->clone()->where('status', 3)->where('assigned_to', auth()->id())->count();
-        $resolvedCount = $queryWithoutStatus->clone()->where('status', 1)->where('solved_by', auth()->id())->count();
+        $pendingCountSystem = $queryWithoutStatus->clone()->where('status', 2)->count();
+        $pendingCountUser = $queryWithoutStatus->clone()->where('status', 3)->where('assigned_to',auth()->id())->count();
+        $resolvedCount = $queryWithoutStatus->clone()->where('status', 1)->where('solved_by',auth()->id())->count();
         $inProgressCount = $queryWithoutStatus->clone()->where('status', 3)->count();
+        $requestCount = $queryWithoutStatus->clone()->where('service_id', 2)->whereNull('solution')->count();
 
-        // Add remaining stats
-        $stats[] = Stat::make(__('In Progress Tasks'), $inProgressCount)
-            ->color('primary')
-            ->icon('heroicon-o-clock');
+        return [
 
-        $stats[] = Stat::make(__('Assigned Tasks'), $pendingCountUser)
-            ->color('primary')
-            ->icon('heroicon-o-clock');
+            Stat::make(
+                __('Pending Tasks for ') . (auth()->user()->type == 1 ? __(Ticket::SYSTEM[auth()->user()->admin->system_id]) : __('all systems') ),
+                $pendingCountSystem
+            )                ->color('primary')
+                ->icon('heroicon-o-clock'),
+                        Stat::make(__('In Progress Tasks'), $inProgressCount)
+                ->color('primary')
+                ->icon('heroicon-o-clock'),
+            Stat::make(__('All Requests'), $requestCount)
+                ->color('primary')
+                ->icon('heroicon-o-clock'),
+                  Stat::make(__('Assigned Tasks'), $pendingCountUser)
+                      ->color('primary')
+                ->icon('heroicon-o-clock'),
+            Stat::make(__('Resolved Tasks'), $resolvedCount)
+                ->icon('heroicon-c-numbered-list'),
 
-        $stats[] = Stat::make(__('Resolved Tasks'), $resolvedCount)
-            ->icon('heroicon-o-check-circle');
-
-        return $stats;
+        ];
     }
     protected function getTablePage(): string
     {
