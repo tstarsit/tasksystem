@@ -202,7 +202,7 @@ public static function getNavigationLabel(): string
                 return static::getQueryBasedOnUserRole();
             })
             ->persistFiltersInSession()
-            ->defaultPaginationPageOption(25)
+            ->defaultPaginationPageOption(50)
             ->columns([
                     Tables\Columns\TextColumn::make('client.name')
                         ->sortable()
@@ -240,6 +240,7 @@ public static function getNavigationLabel(): string
                         ->date('d/m/Y')
                         ->description(fn(Ticket $record): ?string => $record?->created_by == 1 ? __('TS') : __('Client'))
                         ->translateLabel()
+                        ->sortable()
                         ->toggleable(),
                         Tables\Columns\TextColumn::make('status')
                                 ->badge()
@@ -294,6 +295,7 @@ public static function getNavigationLabel(): string
                                 }
                             }),
                              Tables\Columns\TextColumn::make('delivered_date')
+                                 ->sortable()
                                 ->date('d/m/Y')
                                 ->translateLabel()
                                 ->toggleable(),
