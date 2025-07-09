@@ -207,7 +207,7 @@ public static function getNavigationLabel(): string
                 return view('livewire.legend-info');
             })
             ->persistFiltersInSession()
-            ->defaultPaginationPageOption(25)
+            ->defaultPaginationPageOption(50)
             ->columns([
                     Tables\Columns\TextColumn::make('client.name')
                         ->sortable()
@@ -245,6 +245,7 @@ public static function getNavigationLabel(): string
                         ->date('d/m/Y')
                         ->description(fn(Ticket $record): ?string => $record?->created_by == 1 ? __('TS') : __('Client'))
                         ->translateLabel()
+                        ->sortable()
                         ->toggleable()
                 ->extraAttributes(function (Ticket $ticket) {
                     if ($ticket->service_id==2 && $ticket->status==3) {
@@ -307,6 +308,7 @@ public static function getNavigationLabel(): string
                                 }
                             }),
                              Tables\Columns\TextColumn::make('delivered_date')
+                                 ->sortable()
                                 ->date('d/m/Y')
                                 ->translateLabel()
                                 ->toggleable(),
