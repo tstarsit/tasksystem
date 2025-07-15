@@ -23,8 +23,8 @@ class CreateUser extends CreateRecord
         if (User::where('username', $username)->exists()) {
             throw new \Exception('User with this username already exists.');
         }
-
-        $data['password'] = Hash::make('12345678');
+        dd($data);
+        $data['password'] = Hash::make('123');
         $data['type'] = 1;
 
 

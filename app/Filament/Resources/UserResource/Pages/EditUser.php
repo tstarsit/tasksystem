@@ -48,6 +48,7 @@ class EditUser extends EditRecord
         $this->form->fill([
             'name' => $name,
             'username' => $record->username,
+            'type'=>$record->type,
             'system_id' => $systemId, // Always an array
             'roles' => $roles, // Use pluck to get role IDs
         ]);
