@@ -10,6 +10,8 @@ use Filament\Forms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\ToggleColumn;
@@ -69,14 +71,30 @@ class UserResource extends Resource
                     ->multiple()
                     ->options(Role::all()->pluck('name', 'id')),
 
+                Select::make('type')
+                    ->label(__('Type'))
+                    ->options([
+                        1 => __('Admin'),
+                        2 => __('Client'),
+                    ])
+                    ->live() // Triggers reactivity
+                    ->afterStateUpdated(function (Get $get, Set $set) {
+                        $set('system_id', null); // Clear selections
+                        $set('system_id', []); // Force refresh the multiple state
+                    })
+                    ->required(),
+
                 Select::make('system_id')
                     ->label('System')
-                    ->multiple()
                     ->options(Ticket::SYSTEM)
                     ->searchable()
                     ->preload()
                     ->required()
-                    ->rules(['array']),
+                    ->rules(['array'])
+                    ->multiple(function (Get $get): bool {
+                        return $get('type') == 2; // Multiple only for Client
+                    })
+                    ->live(), // Add live() here to force UI refresh
             ]);
     }
     protected static function transliterateArabicToEnglish(string $text): string

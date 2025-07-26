@@ -87,4 +87,13 @@ class Helpers
     {
         return User::whereRaw('LOWER(username) = ?', [strtolower($username)])->exists();
     }
+    public static function getStatusText($status)
+    {
+        return [
+            1 => 'Resolved',
+            2 => 'Pending',
+            3 => 'In Progress',
+            4 => 'Paid',
+        ][$status] ?? 'Unknown';
+    }
 }

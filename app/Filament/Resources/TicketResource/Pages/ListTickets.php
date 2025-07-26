@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TicketResource\Pages;
 
+use App\Exports\TicketExport;
 use App\Exports\UserTicketExport;
 use App\Filament\Resources\TicketResource;
 use App\Imports\assignedImport;
@@ -106,10 +107,15 @@ class ListTickets extends ListRecords
 
             Actions\Action::make('Export')
                 ->label('')
-                ->visible(auth()->user()->hasRole('super admin'))
-                ->action(function () {
-                    return Excel::download(new UserTicketExport(), 'tickets.xlsx');
-                })->icon('icon-excel')
+                ->action(function ($livewire) { // Inject Livewire component
+                    $query = $livewire->getFilteredTableQuery(); // Get filtered query
+
+                    return Excel::download(
+                        new TicketExport($query), // Pass query to export
+                        'tickets.xlsx'
+                    );
+                })
+                ->icon('icon-excel'),
 
         ];
     }

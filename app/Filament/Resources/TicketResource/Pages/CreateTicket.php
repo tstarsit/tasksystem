@@ -27,11 +27,14 @@ class CreateTicket extends CreateRecord
         // Determine status based on conditions
         if (!empty($data['solution'])) {
             $record->delivered_date = now();
+            $record->accepted_date = now();
             $record->solved_by=auth()->id();
+            $record->accepted_by=auth()->id();
             $record->status = 1;
 //            $record->accepted_date = now();// Solved
         } elseif (!empty($data['service_id'])) {
             $record->accepted_date = now();
+            $record->accepted_by = auth()->id();
             $record->status = 3; // Accepted
         } else {
             $record->status = 2; // Pending (default)
@@ -57,8 +60,8 @@ class CreateTicket extends CreateRecord
             if ($head) {
                 $head->notify(
                     Notification::make()
-                        ->title('New Ticket Created')
-                        ->body("{$clientName} has created a new ticket.")
+                        ->title(__('New Ticket Created'))
+                        ->body(__(':clientName has created a new ticket.', ['clientName' => $clientName]))
                         ->success()
                         ->actions([
                             \Filament\Notifications\Actions\Action::make('view')
@@ -76,7 +79,6 @@ class CreateTicket extends CreateRecord
     }
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-
         $data['status']=2;
         if (auth()->user()->type==2) {
             $data['client_id']=auth()->id();
@@ -85,10 +87,10 @@ class CreateTicket extends CreateRecord
         }
         else{
             $data['system_id']=auth()->user()->admin->system_id;
-
             $data['created_by']=1;
         }
         $data['deleted_at']=null;
+
 
         return $data;
     }

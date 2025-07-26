@@ -24,6 +24,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('Hours')->default(0);
             $table->text('recommendation')->nullable();
             $table->dateTime('accepted_date')->nullable();
+            $table->unsignedSmallInteger('accepted_by')->nullable(true);
             $table->dateTime('delivered_date')->nullable();
             $table->unsignedSmallInteger('isAccepted')->default(0);
             $table->unsignedSmallInteger('isReviewed')->default(0);

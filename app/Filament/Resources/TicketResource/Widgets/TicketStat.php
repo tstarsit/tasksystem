@@ -14,38 +14,47 @@ class TicketStat extends StatsOverviewWidget
     use InteractsWithPageTable;
     protected function getStats(): array
     {
-        // Get the base query with all filters applied
         $baseQuery = $this->getPageTableQuery();
-
-        // Clone the base query and remove any 'status' conditions
         $queryWithoutStatus = $baseQuery->clone();
-
-        // Initialize stats array
         $stats = [];
 
-        // Get the count for each status
-        if (auth()->user()->hasRole('Head')) {
-            $pendingCountSystem = $queryWithoutStatus->clone()->where('status', 2)->count();
-            $stats[] = Stat::make(
-                __('Pending Tasks for ') . (auth()->user()->type == 1 ? __(Ticket::SYSTEM[auth()->user()->admin->system_id]) : __('all systems')),
-                $pendingCountSystem
-            )->color('primary');
-        }
 
-        $pendingCountUser = $queryWithoutStatus->clone()->where('status', 3)->where('assigned_to', auth()->id())->count();
-        $resolvedCount = $queryWithoutStatus->clone()->where('status', 1)->where('solved_by', auth()->id())->count();
-        $inProgressCount = $queryWithoutStatus->clone()->where('status', 3)->where('service_id',1)->count();
-        $requestCount = $queryWithoutStatus->clone()->where('service_id', 2)->whereNull('solution')->count();
-        // Add remaining stats
+        // Apply date filtering (only if filters exist)
+        $resolvedQuery = $queryWithoutStatus->clone()
+            ->where('status', 1)
+            ->where('solved_by', auth()->id());
+
+        // Remove the duplicate `whereDate('delivered_date', today())`
+        // Let the date range filter handle it
+        $resolvedCount = $resolvedQuery->count();
+        $pendingCount = $queryWithoutStatus->clone()->where('service_id', 0)->count();
+        // Rest of your stats...
+        $assignedCount = $queryWithoutStatus->clone()->where('status', 3)->where('assigned_to', auth()->id())->count();
+        $inProgressCount = $queryWithoutStatus->clone()
+            ->where('status', 3)
+            ->where('service_id', 1)
+            ->count();
+        $requestCount = $queryWithoutStatus
+            ->clone()
+            ->where('service_id', 2)
+            ->where('status',3)
+            ->whereNull('solution')
+            ->count();
+
+
+        $stats[] = Stat::make(__('Pending Tasks'), $pendingCount)
+            ->color('primary')
+            ->icon('heroicon-o-clock');
+
         $stats[] = Stat::make(__('In Progress Tasks'), $inProgressCount)
             ->color('primary')
             ->icon('heroicon-o-clock');
 
-        $stats[] = Stat::make(__('Assigned Tasks'), $pendingCountUser)
+        $stats[] = Stat::make(__('Assigned Tasks'), $assignedCount)
             ->color('primary')
             ->icon('heroicon-o-clock');
 
-        $stats[] = Stat::make(__('All Requests'), $requestCount)
+        $stats[] = Stat::make(__('Total Requests'), $requestCount)
             ->color('primary')
             ->icon('heroicon-o-clock');
 

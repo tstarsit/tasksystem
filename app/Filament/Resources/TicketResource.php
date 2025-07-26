@@ -86,6 +86,7 @@ public static function getNavigationLabel(): string
                                 'bold', 'bulletList', 'italic',
                                 'orderedList', 'redo', 'underline', 'undo',
                             ])
+
                             ->translateLabel()
                             ->columnSpanFull(),
 
@@ -178,8 +179,8 @@ public static function getNavigationLabel(): string
                             ->format('d-m-Y H:i')
                             ->displayFormat('d/m/Y H:i')
                             ->seconds(false)
-                            ->visibleOn('edit')
                             ->visible(auth()->user()->hasAnyRole(['Head', 'super admin']))
+                            ->visibleOn('edit')
                             ->disabled(fn ($get) => empty($get('accepted_date'))),
 
                         Toggle::make('isUrgent')
@@ -240,15 +241,15 @@ public static function getNavigationLabel(): string
                             // Default case (no special conditions)
                             return [];
                         })
-                        ->tooltip(fn (Ticket $record): string => $record->created_at ? $record->created_at->format('Y-m-d H:i:s') : ''),
+                        ->tooltip(fn (Ticket $record): string => $record->created_at ? $record->created_at->format('Y-m-d') : ''),
                     Tables\Columns\TextColumn::make('accepted_date')
                         ->date('d/m/Y')
-                        ->description(fn(Ticket $record): ?string => $record?->created_by == 1 ? __('TS') : __('Client'))
+                        ->description(fn(Ticket $record): ?string => $record?->accepted?->name)
+                        ->tooltip(fn(Ticket $record): ?string => $record?->created_by == 1 ? __('TS') : __('Client'))
                         ->translateLabel()
-                        ->sortable()
                         ->toggleable()
                 ->extraAttributes(function (Ticket $ticket) {
-                    if ($ticket->service_id==2 && $ticket->status==3) {
+                    if ($ticket->service_id==2) {
                         return [
                             'class' => 'dark:bg-gray-500/20 rounded-lg rounded bg-gray-200', // Specific color for both conditions
                         ];
@@ -308,23 +309,36 @@ public static function getNavigationLabel(): string
                                 }
                             }),
                              Tables\Columns\TextColumn::make('delivered_date')
-                                 ->sortable()
                                 ->date('d/m/Y')
                                 ->translateLabel()
                                 ->toggleable(),
-                            Tables\Columns\TextColumn::make('description')
-                                ->searchable()
-                                ->html()
-                                ->translateLabel()
-                                ->sortable()
-                                ->toggleable()
-                                ->wrap(),
-                    Tables\Columns\TextColumn::make('solution')
-                        ->toggleable()
-                        ->searchable()
-                        ->translateLabel()
-                        ->visible(auth()->user()->hasAnyRole(['Head', 'super admin', 'admin']))
-                        ->wrap(),
+                Tables\Columns\TextColumn::make('description')
+                    ->searchable()
+                    ->html()
+                    ->translateLabel()
+                    ->sortable()
+                    ->toggleable()
+                    ->wrap()
+                    ->width('300px') // Fixed width
+                    ->extraAttributes(['class' => 'break-words whitespace-normal']),
+                Tables\Columns\TextColumn::make('recommendation')
+                    ->visible(auth()->user()->hasRole('Client'))
+                    ->searchable()
+                    ->translateLabel()
+                    ->sortable()
+                    ->toggleable()
+                    ->wrap()
+                    ->width('300px') // Same width as description
+                    ->extraAttributes(['class' => 'break-words whitespace-normal']),
+
+                Tables\Columns\TextColumn::make('solution')
+                    ->toggleable()
+                    ->searchable()
+                    ->translateLabel()
+                    ->visible(auth()->user()->hasAnyRole(['Head', 'super admin', 'admin']))
+                    ->wrap()
+                    ->width('300px') // Same width as description
+                    ->extraAttributes(['class' => 'break-words whitespace-normal']),
                 Tables\Columns\TextColumn::make('deleted_at')
                     ->date('d/m/Y')
                     ->toggleable()
@@ -369,6 +383,16 @@ public static function getNavigationLabel(): string
                     ->queries(
                         true: fn (Builder $query) => $query->where('isUrgent', true),
                         false: fn (Builder $query) => $query->where('isUrgent', false),
+                        blank: fn (Builder $query) => $query,
+                    ),
+                Tables\Filters\TernaryFilter::make('service_id')
+                    ->label('Service')
+                    ->translateLabel()
+                    ->trueLabel(__('Only Maintenance'))
+                    ->falseLabel(__('Only Requests'))
+                    ->queries(
+                        true: fn (Builder $query) => $query->where('service_id', 1),
+                        false: fn (Builder $query) => $query->where('service_id', 2),
                         blank: fn (Builder $query) => $query,
                     ),
 

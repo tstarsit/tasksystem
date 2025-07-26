@@ -22,77 +22,7 @@ class Ticket extends Model
         'accepted_date' => 'datetime',
         'delivered_date' => 'datetime',
     ];
-    protected static function boot()
-    {
-        parent::boot();
 
-        static::updating(function ($ticket) {
-            $original = $ticket->getOriginal();
-
-            // Only log changes for existing columns
-            foreach ($ticket->getDirty() as $attribute => $newValue) {
-                // Skip if the column didn't exist in original (like during creation)
-                if (!array_key_exists($attribute, $original)) {
-                    continue;
-                }
-
-                if ($original[$attribute] != $newValue) {
-                    Audit::create([
-                        'ticket_id' => $ticket->id,
-                        'user_id' => auth()->id(),
-                        'changed_column' => $attribute,
-                        'old_value' => $original[$attribute] ?? null,
-                        'new_value' => $newValue,
-                        'change_type' => 2,
-                    ]);
-                }
-            }
-
-            // Update accepted_date and delivered_date based on changes
-            if ($ticket->isDirty('service_id')) {
-                $ticket->accepted_date = now();
-                $ticket->status = 3;
-            }
-
-            if ($ticket->isDirty('solution')) {
-                $user = User::find($ticket->client_id);
-                $user->notify(
-                    Notification::make()
-                        ->title('تم حل المشكلة')
-                        ->icon('heroicon-o-document-text')
-                        ->actions([
-                            Action::make('view')
-                                ->label('View Ticket')
-                                ->icon('heroicon-o-eye')
-                                ->url(EditTicket::getUrl(['record' => $ticket->id]))
-                                ->openUrlInNewTab(),
-                        ])
-                        ->toDatabase(),
-                );
-
-                $ticket->delivered_date = now();
-                $ticket->solved_by = auth()->id();
-                $ticket->status = 1;
-            }
-
-            if ($ticket->isDirty('assigned_to')) {
-                $user = User::find($ticket->assigned_to);
-                $user->notify(
-                    Notification::make()
-                        ->title('A Ticket has been assigned to you')
-                        ->icon('heroicon-o-document-text')
-                        ->actions([
-                            Action::make('view')
-                                ->label('View Ticket')
-                                ->icon('heroicon-o-eye')
-                                ->url(EditTicket::getUrl(['record' => $ticket->id]))
-                                ->openUrlInNewTab(),
-                        ])
-                        ->toDatabase(),
-                );
-            }
-        });
-    }
 
     const  SYSTEM = [
         '1' => 'NAS',
@@ -135,6 +65,10 @@ class Ticket extends Model
     public function solver()
     {
         return $this->belongsTo(Admin::class, 'solved_by','user_id');
+    }
+    public function accepted()
+    {
+        return $this->belongsTo(Admin::class, 'accepted_by','user_id');
     }
     public function client()
     {
