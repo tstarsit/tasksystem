@@ -334,10 +334,14 @@ class EditTicket extends EditRecord
             }
         }
 
-        if (is_null($data['delivered_date'])&&$data['accepted_date']){
-            $record->status = 3; // In progress
 
+        if(!auth()->user()->hasRole('Client')){
+            if (is_null($data['delivered_date'])&&$data['accepted_date']){
+                $record->status = 3; // In progress
+
+            }
         }
+
 
         // Assignment changes
         if ($record->isDirty('assigned_to')) {
