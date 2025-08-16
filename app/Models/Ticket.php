@@ -78,4 +78,9 @@ class Ticket extends Model
     {
         return $this->belongsTo(Admin::class, 'solved_by','user_id');
     }
+
+    public function assigned()
+    {
+        return $this->belongsTo(Admin::class, 'assigned_to','user_id');
+    }
 }

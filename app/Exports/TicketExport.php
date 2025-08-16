@@ -1,6 +1,7 @@
 <?php
 namespace App\Exports;
 
+use Illuminate\Database\Eloquent\Builder;
 use App\Helpers\Helpers;
 use App\Models\Ticket;
 use Illuminate\Support\Carbon;
@@ -19,11 +20,10 @@ class TicketExport implements FromQuery, WithHeadings, WithMapping
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @return Builder
      */
     public function query()
     {
-
         return $this->query->with(['client', 'solver'])
             ->select(
                 'system_id',
@@ -49,8 +49,17 @@ class TicketExport implements FromQuery, WithHeadings, WithMapping
         static $number = 1;
         $user = Auth::user();
 
+        // Determine service type text
+        $serviceType = '';
+        if ($ticket->service_id == 1) {
+            $serviceType = __('Maintenance');
+        } elseif ($ticket->service_id == 2) {
+            $serviceType = __('Request');
+        }
+
         $row = [
             $number++,
+            $serviceType, // Service type (Maintenance/Request)
             $ticket->description,
             __(Helpers::getStatusText($ticket->status)),
             Carbon::parse($ticket->created_at)->format('d-m-Y'),
@@ -78,6 +87,7 @@ class TicketExport implements FromQuery, WithHeadings, WithMapping
         $user = Auth::user();
         $headings = [
             __('#'),
+            __('Type'),
             __('Description'),
             __('Status'),
             __('Created At'),

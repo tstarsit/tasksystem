@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\api;
 
+use Exception;
 use App\Http\Controllers\Controller;
 use App\Models\LabTrans;
 use App\Models\LabTransDtl;
@@ -125,7 +126,7 @@ class MessageController extends Controller
                 'sent_url' => $fullUrl,
             ], 201);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             dd($e);
             return response()->json(['error' => 'An error occurred while processing your request'], 500);
         }
@@ -186,7 +187,7 @@ class MessageController extends Controller
             }
 
             return response()->json(['message' => 'updated successfully!'], 200);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json(['error' => 'An error occurred while processing your request'], 500);
         }
     }

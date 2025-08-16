@@ -77,10 +77,13 @@ class EditTicket extends EditRecord
                                     ->translateLabel()
                                     ->columnSpanFull()
                                     ->visibleOn('edit')
-                                    ->disabled(function ($get) {
+                                    ->disabled(function ($get, $record) {
                                         if (auth()->user()->hasRole('Client')) {
                                             return true; // Always disabled for clients
                                         } elseif (auth()->user()->type == 1) {
+                                            if ($record && $record->solved_by == auth()->id()) {
+                                                return false;
+                                            }
                                             return !empty($get('delivered_date')) && !empty($get('solution'));
                                         }
                                         return false;
@@ -164,9 +167,19 @@ class EditTicket extends EditRecord
                                     })
                                     ->searchable()
                                     ->preload()
+                                    ->disabled(function ($get) {
+                                        if (auth()->user()->hasRole('Client')) {
+                                            // For clients: disable if accepted_date is not empty
+                                            return !empty($get('accepted_date'));
+                                        } elseif (auth()->user()->hasRole('admin')) {
+                                            // For admins: disable if both delivered_date and solution are not null
+                                            return !empty($get('delivered_date')) && !empty($get('solution'));
+                                        }
+                                        // Default case (other roles): not disabled
+                                        return false;
+                                    })
                                     ->required()
                                     ->columnSpan(1)
-
                                     // Ensure dropdown shows translated names
                                     ->getOptionLabelsUsing(function ($values) {
                                         $decodedIds = is_string($values) ? json_decode($values, true) : (array) $values;
@@ -186,7 +199,8 @@ class EditTicket extends EditRecord
                                     })
                                     ->dehydrated()
                                     ->translateLabel()
-                                    ->options(Admin::where('system_id', auth()->user()->type == 1 ? auth()->user()->admin->system_id : '')->whereHas('user', fn ($query) => $query
+                                    ->options(
+                                        Admin::where('system_id', auth()->user()->type == 1 ? auth()->user()->admin->system_id : '')->whereHas('user', fn ($query) => $query
                                         ->where('status', 1)
                                         ->where('type', 1))->pluck('name', 'user_id'))
                                     ->visible(fn () => auth()->user()->hasAnyRole(['Head', 'super admin'])),
@@ -240,28 +254,51 @@ class EditTicket extends EditRecord
     {
         return [
             Actions\DeleteAction::make()
-            ->action(function (Model $record){
-                // Get the changed column (e.g., 'deleted_at') before deletion
-                $changedColumn = 'deleted_at';
-                $oldValue = $record->$changedColumn; // Old value before deletion
-                $newValue = now(); // New value after deletion (timestamp)
+                ->action(function (Model $record) {
+                    // Check if user is a Client and conditions for deletion
+                    if (auth()->user()->hasRole('Client')) {
+                        if ($record->service_id != 0 || $record->status != 2) {
+                            Notification::make()
+                                ->title('Deletion Denied')
+                                ->body('You can only delete tickets with service_id = 0 and status = 2')
+                                ->danger()
+                                ->send();
+                            return; // Exit without deleting
+                        }
+                    }
 
-                // Store in the audit table
-                Audit::create([
-                    'ticket_id' => $record->id,
-                    'user_id' => auth()->id(),
-                    'old_value' => $oldValue, // Capture the old value before deletion
-                    'new_value' => $newValue, // The new value after deletion
-                    'change_type' => 3,
-                    'changed_column' => $changedColumn,
-                ]);
-                $record->delete();
-                Notification::make()
-                    ->title('Deleted')
-                    ->body('Ticket has been successfully imported.')
-                    ->success()
-                    ->send();
-            }),
+                    // Get the changed column (e.g., 'deleted_at') before deletion
+                    $changedColumn = 'deleted_at';
+                    $oldValue = $record->$changedColumn; // Old value before deletion
+                    $newValue = now(); // New value after deletion (timestamp)
+
+                    // Store in the audit table
+                    Audit::create([
+                        'ticket_id' => $record->id,
+                        'user_id' => auth()->id(),
+                        'old_value' => $oldValue,
+                        'new_value' => $newValue,
+                        'change_type' => 3,
+                        'changed_column' => $changedColumn,
+                    ]);
+
+                    $record->delete();
+
+                    Notification::make()
+                        ->title('Deleted')
+                        ->body('Ticket has been successfully deleted.')
+                        ->success()
+                        ->send();
+                })
+                ->visible(function ($record) {
+                    // If user is a Client, check service_id and status
+                    if (auth()->user()->hasRole('Client')) {
+                        return $record->service_id == 0 && $record->status == 2;
+                    }
+
+                    // For non-Clients, just check delete permission
+                    return auth()->user()->hasPermissionTo('delete_ticket');
+                }),
             RestoreAction::make()
                 ->action(function (Model $record) {
                     // Get the column that changed (typically 'deleted_at')
@@ -428,8 +465,7 @@ class EditTicket extends EditRecord
                     ->icon('heroicon-o-document-text')
                     ->actions([
                         Action::make('view')
-                            ->label('View Ticket')
-                            ->translateLabel()
+                            ->label(__('View Ticket'))
                             ->icon('heroicon-o-eye')
                             ->url(EditTicket::getUrl(['record' => $record->id]))
                             ->openUrlInNewTab(),

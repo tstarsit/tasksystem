@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
+use App\Models\Admin;
+use App\Models\Client;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -28,58 +30,65 @@ class EditUser extends EditRecord
 
         // Handle system_id based on user type
         $systemId = $record->type == 1
-            ? ($record->admin ? [$record->admin->system_id] : []) // Wrap admin system_id in an array
-            : ($record->client ? json_decode($record->client->system_id, true) : []); // Decode JSON to array for client
-
-        // Ensure system_id is always an array
-        if (!is_array($systemId)) {
-            $systemId = [];
-        }
+            ? ($record->admin ? $record->admin->system_id : null) // Single value for admin
+            : ($record->client ? json_decode($record->client->system_id, true) : []); // Array for client
 
         // Handle name based on user type
         $name = $record->type == 1
-            ? ($record->admin ? $record->admin->name : '') // Single value for admin
-            : ($record->client ? $record->client->name : ''); // Single value for client
+            ? ($record->admin ? $record->admin->name : '')
+            : ($record->client ? $record->client->name : '');
 
-        // Ensure roles is an array (even if empty)
         $roles = $record->roles ? $record->roles->pluck('id')->toArray() : [];
 
         // Fill the form
         $this->form->fill([
             'name' => $name,
             'username' => $record->username,
-            'type'=>$record->type,
-            'system_id' => $systemId, // Always an array
-            'roles' => $roles, // Use pluck to get role IDs
+            'type' => $record->type,
+            'system_id' => $record->type == 1 ? $systemId : null, // Single value for admin
+            'system_ids' => $record->type == 2 ? (is_array($systemId) ? $systemId : []) : [], // Array for client
+            'roles' => $roles,
         ]);
     }
+
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         // Eager load the admin or client relationship to avoid null issues
         $record->load(['admin', 'client']);
+
         // Handle system_id based on user type
         if ($record->type == 1) {
-            // User is an admin - system_id is a single value
-
-            if ($record->admin) {
-
-                $record->admin->update([
-                    'name' => $data['name'], // Update the admin's name
-                    'system_id' => $data['system_id'][0], // Single value, no JSON encoding
+            // User is currently an admin
+            if ($data['type'] != 1) {
+                // Convert admin to client
+                Client::create([
+                    'user_id' => $record->id,
+                    'name' => $record->name,
+                    'client_type' => 1,
+                    'system_id' => json_encode($data['system_ids'] ?? []),
                 ]);
+
+                Admin::where('user_id', $record->id)->delete();
+                $record->type = 2;
+                $record->save();
             }
         } else {
-            // User is a client - system_id is a JSON array
-            if ($record->client) {
-                $data['system_id'] = json_encode($data['system_id']); // Encode array to JSON
-                $record->client->update([
-                    'name' => $data['name'], // Update the client's name
-                    'system_id' => $data['system_id'],
+            // User is currently a client
+            if ($data['type'] == 1) {
+                // Convert client to admin
+                Admin::create([
+                    'user_id' => $record->id,
+                    'name' => $record->name,
+                    'system_id' => is_array($data['system_id']) ? ($data['system_id'][0] ?? null) : $data['system_id'],
                 ]);
+
+                Client::where('user_id', $record->id)->delete();
+                $record->type = 1;
+                $record->save();
             }
         }
 
         // Return the updated user record
-        return $record;
+        return $record->fresh();
     }
 }

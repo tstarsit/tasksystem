@@ -141,7 +141,8 @@ public static function getNavigationLabel(): string
                         Select::make('client_id')
                             ->relationship('client', 'name')
                             ->disabled(fn ($get) => !empty($get('accepted_date')))
-                            ->options(Client::with('user')
+                            ->options(Client::forCurrentUser()
+                                ->with('user')
                                 ->whereHas('user', fn ($query) => $query->active())
                                 ->pluck('name', 'user_id'))
                             ->searchable()
@@ -168,6 +169,8 @@ public static function getNavigationLabel(): string
                         // Row 3 (full width)
                         Textarea::make('recommendation')
                             ->translateLabel()
+                            ->visibleOn('edit')
+                            ->visible(auth()->user()->hasAnyRole(['Head', 'super admin', 'admin']))
                             ->disabled(auth()->user()->hasRole('Client'))
                             ->columnSpanFull(),
 
@@ -244,7 +247,7 @@ public static function getNavigationLabel(): string
                         ->tooltip(fn (Ticket $record): string => $record->created_at ? $record->created_at->format('Y-m-d') : ''),
                     Tables\Columns\TextColumn::make('accepted_date')
                         ->date('d/m/Y')
-                        ->description(fn(Ticket $record): ?string => $record?->accepted?->name)
+                        ->description(fn(Ticket $record): ?string =>!auth()->user()->hasRole('Client') ?$record?->accepted?->name:'')
                         ->tooltip(fn(Ticket $record): ?string => $record?->created_by == 1 ? __('TS') : __('Client'))
                         ->translateLabel()
                         ->toggleable()
@@ -280,14 +283,21 @@ public static function getNavigationLabel(): string
                                 })
                             ->formatStateUsing(function ($record, $state) {
                                 try {
-                                    return [
+                                    return match($state) {
                                         1 => auth()->user()->type == 1
-                                            ? ($record->solved_by ? __('Resolved by') . ' ' . $record->admin->name : '')
+                                            ? ($record->solved_by
+                                                ? __('Resolved by') . ' ' . $record->admin->name
+                                                : __('Resolved'))
                                             : __('Resolved'),
                                         2 => __('Pending'),
-                                        3 => __('In Progress'),
+                                        3 => auth()->user()->type == 1
+                                            ? ($record->assigned_to
+                                                ? __('Assigned to') . ' ' . $record->assigned->name
+                                                : __('In Progress'))
+                                            : __('In Progress'),
                                         4 => __('Paid'),
-                                    ][$state] ?? 'Unknown';
+                                        default => __('Unknown'),
+                                    };
                                 } catch (\Exception $e) {
                                     // Dump everything important when an error occurs
                                     dd([
@@ -322,8 +332,8 @@ public static function getNavigationLabel(): string
                     ->width('300px') // Fixed width
                     ->extraAttributes(['class' => 'break-words whitespace-normal']),
                 Tables\Columns\TextColumn::make('recommendation')
-                    ->visible(auth()->user()->hasRole('Client'))
                     ->searchable()
+                    ->visible(auth()->user()->hasRole('Client'))
                     ->translateLabel()
                     ->sortable()
                     ->toggleable()
@@ -365,6 +375,16 @@ public static function getNavigationLabel(): string
                     ->options(array_map(fn ($value) => __($value), self::$model::SYSTEM))
                     ->hidden(fn () => !auth()->user()->hasAnyRole(['super admin','Client'])),
 
+                Tables\Filters\SelectFilter::make('accepted_by')
+                    ->label('Accepted by')
+                    ->translateLabel()
+                    ->searchable()
+                    ->options(
+                        Admin::whereIn('user_id', Ticket::pluck('accepted_by')->unique()->filter())
+                            ->pluck('name', 'user_id')
+                            ->toArray()
+                    )
+                    ->hidden(fn () => auth()->user()->hasRole('Client')),
                 // Status filter (replaces SelectConstraint)
                 Tables\Filters\SelectFilter::make('status')
                     ->translateLabel()
@@ -483,33 +503,45 @@ public static function getNavigationLabel(): string
     private static function getQueryBasedOnUserRole(): Builder
     {
         $user = auth()->user();
-        // Start with base query
-        $query = Ticket::query()
-            ->withTrashed();
+        $query = Ticket::query()->withTrashed();
 
-        // Apply role-specific conditions
         if ($user->hasRole('super admin')) {
             // No additional conditions for super admin
         } elseif ($user->hasRole('Head') || $user->hasRole('admin')) {
             $systemId = $user->admin->system_id;
-            $query->where('system_id', $systemId);
-            if ($user->hasRole('admin')) {
-                $query->whereNotNull('service_id');
+
+            if ($user->hasRole('web')) {
+                // For users with both admin/Head and web roles
+                $query->where(function($q) use ($systemId) {
+                    $q->where('system_id', $systemId)
+                        ->orWhere('client_id', 146);
+                });
+            } else {
+                // Regular admin/Head users - only their system tickets
+                $query->where('system_id', $systemId);
             }
+
+
+        } elseif ($user->hasRole('web')) {
+            // Only web users without admin/Head roles
+            $query->where('client_id', 137);
         } else {
             // Regular users can only see their own records
             $query->where('client_id', $user->id);
         }
-
+      
         return $query
-            ->orderByRaw('CASE WHEN assigned_to = ? AND status = 3 and isUrgent=1 THEN 0 ELSE 1 END', [$user->id])
-            ->orderByRaw('CASE WHEN assigned_to = ? AND status = 3 and isUrgent=0 THEN 0 ELSE 1 END', [$user->id]) // First priority: assigned to me AND status=2
-            ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 1 THEN 0 ELSE 1 END')
-            ->orderByRaw('CASE WHEN status = 2 AND isUrgent = 0 THEN 0 ELSE 1 END')
-            ->orderByRaw('CASE WHEN status = 3 AND isUrgent = 1 THEN 0 ELSE 1 END') // Fourth priority: status=1
-            ->orderByRaw('CASE WHEN status = 3 THEN 0 ELSE 1 END') // Fourth priority: status=1
+            ->orderByRaw('CASE
+        WHEN assigned_to = ? AND status = 3 AND isUrgent = 1 THEN 1
+        WHEN assigned_to = ? AND status = 3 AND isUrgent = 0 THEN 2
+        WHEN status = 2 AND isUrgent = 1 THEN 3
+        WHEN status = 2 AND isUrgent = 0 THEN 4
+        WHEN status = 3 AND isUrgent = 1 THEN 5
+        WHEN status = 3 THEN 6
+        ELSE 7
+    END', [$user->id, $user->id])
+            ->orderBy('created_at', 'desc')
             ->orderBy('delivered_date', 'desc');
-
     }
     static function getRelations(): array
     {

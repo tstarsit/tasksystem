@@ -3,7 +3,6 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
-use App\Filament\Resources\UserResource\RelationManagers;
 use App\Models\Ticket;
 use App\Models\User;
 use Filament\Forms;
@@ -11,18 +10,19 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
-use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
-use function React\Promise\all;
+
 
 class UserResource extends Resource
 {
@@ -77,24 +77,32 @@ class UserResource extends Resource
                         1 => __('Admin'),
                         2 => __('Client'),
                     ])
-                    ->live() // Triggers reactivity
-                    ->afterStateUpdated(function (Get $get, Set $set) {
-                        $set('system_id', null); // Clear selections
-                        $set('system_id', []); // Force refresh the multiple state
-                    })
+                    ->live()
                     ->required(),
 
+// Admin version (single select)
                 Select::make('system_id')
                     ->label('System')
+                    ->translateLabel()
                     ->options(Ticket::SYSTEM)
                     ->searchable()
                     ->preload()
                     ->required()
+                    ->live()
+                    ->visible(fn (Get $get): bool => $get('type') == 1), // Only show for Admin
+
+// Client version (multiple select)
+                Select::make('system_ids') // Different field name for multiple version
+                ->label('System')
+                    ->translateLabel()
+                    ->options(Ticket::SYSTEM)
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->multiple()
                     ->rules(['array'])
-                    ->multiple(function (Get $get): bool {
-                        return $get('type') == 2; // Multiple only for Client
-                    })
-                    ->live(), // Add live() here to force UI refresh
+                    ->live()
+                    ->visible(fn (Get $get): bool => $get('type') == 2) // Only show for Client
             ]);
     }
     protected static function transliterateArabicToEnglish(string $text): string
@@ -171,16 +179,17 @@ class UserResource extends Resource
                     ->translateLabel()
                     ->updateStateUsing(function ($record, $state) {
                         $record->approved_at = $state ? Carbon::now() : null;
-                        $record->status =  $record->status==1?0:1;
+                        $record->status = $state ? 1 : 0;  // Set status based on the toggle state
                         $record->save();
                     })
 
             ])
+            ->defaultSort('created_at','desc')
             ->filters([
                 Tables\Filters\TernaryFilter::make('status'),
                 Tables\Filters\SelectFilter::make('type')
                     ->options([
-                              '1' => 'Admin', // Option for user_type = 1
+                                '1' => 'Admin', // Option for user_type = 1
                                '2' => 'Client', // Option for user_type = 2
                            ]),
                 SelectFilter::make('roles')
@@ -189,8 +198,28 @@ class UserResource extends Resource
                     ->placeholder('All Roles'), // Placeholder text
 
             ])
+
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Action::make('resetPassword')
+                    ->label('Reset Password')
+                    ->visible(auth()->user()->hasRole('web'))
+                    ->icon('heroicon-o-key')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Reset Password')
+                    ->modalDescription('Are you sure you want to reset this user\'s password? The new password will be: "123".')
+                    ->action(function ($record) {
+                        $record->update([
+                            'password' => Hash::make('123'),
+                        ]);
+
+                        Notification::make()
+                            ->title('Password Reset Successfully')
+                            ->success()
+                            ->send();
+
+                    })
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

@@ -2,6 +2,8 @@
 
 namespace App\Imports;
 
+use Exception;
+use Illuminate\Database\Eloquent\Model;
 use App\Models\Audit;
 use App\Models\Ticket;
 use Maatwebsite\Excel\Concerns\ToModel;
@@ -10,10 +12,10 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 class AuditImport implements ToModel,WithHeadingRow
 {
     /**
-    * @param array $row
-    *
-    * @return \Illuminate\Database\Eloquent\Model|null
-    */
+     * @param array $row
+     *
+     * @return Model|null
+     */
     public function model(array $row)
     {
 
@@ -59,7 +61,7 @@ class AuditImport implements ToModel,WithHeadingRow
 
             return $ticket;
         }
-               catch (\Exception $e){
+               catch (Exception $e){
             dd($e->getMessage());
         }
 

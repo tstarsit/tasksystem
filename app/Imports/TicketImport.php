@@ -2,6 +2,11 @@
 
 namespace App\Imports;
 
+use Exception;
+use Throwable;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
+use Log;
+use Illuminate\Database\Eloquent\Model;
 use App\Models\Ticket;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +19,7 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
     /**
      * @param array $row
      *
-     * @return \Illuminate\Database\Eloquent\Model|null
+     * @return Model|null
      */
     public function model(array $row)
     {
@@ -27,7 +32,7 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
             $excelSystemId = $row['sys_id'];
             $excelToSystemIdMap = [4 => 1, 3 => 3, 2 => 2, 5 => 4];
             if (!array_key_exists($excelSystemId, $excelToSystemIdMap)) {
-                throw new \Exception('Invalid system_id from Excel');
+                throw new Exception('Invalid system_id from Excel');
             }
             $systemId = $excelToSystemIdMap[$excelSystemId];
 
@@ -86,7 +91,7 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
             }
             // Validate solved_by exists if required
             if ($solvedBy !== null && !DB::table('users')->where('id', $solvedBy)->exists()) {
-                throw new \Exception("User ID {$solvedBy} does not exist in users table");
+                throw new Exception("User ID {$solvedBy} does not exist in users table");
             }
 
             return new Ticket([
@@ -108,7 +113,7 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
                 'isUrgent' => (int)$isUrgent,
                 'deleted_at' => $deletedAt
             ]);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             dd($e);
             return null;
         }
@@ -130,7 +135,7 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
 
             // Handle Excel serial dates
             if (is_numeric($dateValue)) {
-                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($dateValue)
+                return Date::excelToDateTimeObject($dateValue)
                     ->format('Y-m-d H:i:s');
             }
 
@@ -173,14 +178,14 @@ class TicketImport implements ToModel, WithChunkReading, WithHeadingRow
             // Fallback: Try Carbon's built-in parser
             try {
                 return Carbon::parse($dateValue)->format('Y-m-d H:i:s');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $dateValue = $this->cleanDateString($dateValue);
                 return Carbon::parse($dateValue)->format('Y-m-d H:i:s');
             }
 
-            throw new \Exception("Invalid date format for $fieldName: " . json_encode($dateValue));
-        } catch (\Exception $e) {
-            \Log::warning("Date parsing failed for $fieldName: " . $e->getMessage());
+            throw new Exception("Invalid date format for $fieldName: " . json_encode($dateValue));
+        } catch (Exception $e) {
+            Log::warning("Date parsing failed for $fieldName: " . $e->getMessage());
             return null;
         }
     }

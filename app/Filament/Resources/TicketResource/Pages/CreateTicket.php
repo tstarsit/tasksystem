@@ -66,6 +66,7 @@ class CreateTicket extends CreateRecord
                         ->actions([
                             \Filament\Notifications\Actions\Action::make('view')
                                 ->button()
+                                ->translateLabel()
                                 ->icon('heroicon-o-eye')
                                 ->url(route('filament.admin.resources.tickets.edit', $ticketId))
                         ])

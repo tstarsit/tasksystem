@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Exception;
 use App\Observers\UserObserver;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
@@ -45,7 +47,7 @@ class User extends Authenticatable implements HasName,FilamentUser
     }
 
 
-    public function audits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function audits(): HasMany
     {
         return $this->hasMany(Audit::class);
     }
@@ -104,7 +106,7 @@ class User extends Authenticatable implements HasName,FilamentUser
             $this->loadMissing('admin', 'client');
 
             return $this->type == 1 ? ($this->admin?->name ?? 'No Admin') : ($this->client?->name ?? 'No Client');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             dd($this);
         }
 

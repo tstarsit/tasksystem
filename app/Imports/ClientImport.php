@@ -2,6 +2,7 @@
 
 namespace App\Imports;
 
+use Exception;
 use App\Helpers\Helpers;
 use App\Models\Client;
 use App\Models\User;
@@ -41,7 +42,7 @@ class ClientImport implements ToCollection, WithHeadingRow
 
             // OR create new users and clients (uncomment one)
             // $this->createNewClient($row);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Error processing row', [
                 'row' => $row,
                 'error' => $e->getMessage()
@@ -55,7 +56,7 @@ class ClientImport implements ToCollection, WithHeadingRow
             return Client::whereNotIn('user_id', $this->excelClientIds)
                 ->pluck('user_id')
                 ->toArray();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Error finding missing client IDs', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -76,7 +77,7 @@ class ClientImport implements ToCollection, WithHeadingRow
                     $username = Helpers::generateUsername($client->name);
                     $client->user->update(['username' => $username]);
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 dd($e,$client);
                 Log::error('Error processing missing client', [
                     'client_id' => $client->user_id,

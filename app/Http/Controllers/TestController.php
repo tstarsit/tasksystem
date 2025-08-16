@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Mpdf\Mpdf;
+use Carbon\Carbon;
 use App\Models\LabTrans;
 use App\Models\LabTransDtl;
 use App\Models\SmsClient;
@@ -51,7 +53,7 @@ class TestController extends Controller
             ->get()
             ->groupBy('PARA1_DESC');
 
-        $mpdf = new \Mpdf\Mpdf([
+        $mpdf = new Mpdf([
             'margin_left' => 10,
             'margin_right' => 10,
             'margin_top' => 50,
@@ -116,7 +118,7 @@ class TestController extends Controller
                 </tr>
                 <tr>
                     <th>Collected</th>
-                    <td>' . \Carbon\Carbon::parse($LabTrans->result_date)->format('Y-m-d') . '</td>
+                    <td>' . Carbon::parse($LabTrans->result_date)->format('Y-m-d') . '</td>
                     <th>Doctor Name</th>
                     <td>' . $LabTrans->emp_desc . '</td>
                 </tr>

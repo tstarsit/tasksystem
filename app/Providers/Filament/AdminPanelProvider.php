@@ -26,6 +26,7 @@ use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
 use Joaopaulolndev\FilamentEditProfile\Pages\EditProfilePage;
 use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 
+
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
@@ -35,7 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login(CustomLogin::class)
-             ->colors([
+            ->colors([
                 'primary' => [
                     50=>'rgb(248, 250, 252)',
                     100 => 'rgb(230, 235, 240)',  // Darker Gray
@@ -113,7 +114,7 @@ class AdminPanelProvider extends PanelProvider
                     ->shouldRegisterNavigation(false)
                     ->shouldShowEmailForm(false)
                     ->shouldShowDeleteAccountForm(false),
-                    FilamentSpatieLaravelBackupPlugin::make()
+                   FilamentSpatieLaravelBackupPlugin::make()
                         ->authorize(fn (): bool => auth()->user()->hasPermissionTo('page_Backups')),
 
 
