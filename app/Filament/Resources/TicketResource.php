@@ -458,7 +458,7 @@ public static function getNavigationLabel(): string
                     )
                     ->default(false),
                 // Date range filter (new addition)
-                Filter::make('created_at')
+                Filter::make('delivered_date')
                     ->form([
                         Grid::make(2) // This creates a 2-column grid
                         ->schema([
@@ -529,7 +529,7 @@ public static function getNavigationLabel(): string
             // Regular users can only see their own records
             $query->where('client_id', $user->id);
         }
-      
+
         return $query
             ->orderByRaw('CASE
         WHEN assigned_to = ? AND status = 3 AND isUrgent = 1 THEN 1

@@ -1,7 +1,6 @@
 <?php
 namespace App\Exports;
 
-use Illuminate\Database\Eloquent\Builder;
 use App\Helpers\Helpers;
 use App\Models\Ticket;
 use Illuminate\Support\Carbon;
@@ -20,7 +19,7 @@ class TicketExport implements FromQuery, WithHeadings, WithMapping
     }
 
     /**
-     * @return Builder
+     * @return \Illuminate\Database\Eloquent\Builder
      */
     public function query()
     {

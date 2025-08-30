@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Mpdf\Mpdf;
-use Carbon\Carbon;
 use App\Models\LabTrans;
 use App\Models\LabTransDtl;
 use App\Models\SmsClient;
@@ -47,13 +45,13 @@ class TestController extends Controller
             return response()->json(['error' => 'No record found'], 404);
         }
        $hospital= SmsClient::with('client')->where('code',$LabTrans->sms_hos_code)->first();
-
+        dd($hospital);
         $LabTransDtls = LabTransDtl::where('req_no', $LabTrans->request_no)
             ->orderBy('order_item') // Orders tests within each group
             ->get()
             ->groupBy('PARA1_DESC');
 
-        $mpdf = new Mpdf([
+        $mpdf = new \Mpdf\Mpdf([
             'margin_left' => 10,
             'margin_right' => 10,
             'margin_top' => 50,
@@ -71,7 +69,8 @@ class TestController extends Controller
         $mpdf->autoLangToFont = true;
 
         // Read and encode the image to base64
-        $headerImagePath = public_path('assets/img/fr_header.jpg');
+        $headerImagePath = public_path('assets/img').'/'.$hospital->header;
+        dd($headerImagePath);
         $footerImagePath = public_path('assets/img').'/'.$hospital->footer;
         $headerImageSrc = file_exists($headerImagePath) ? 'data:image/jpg;base64,' . base64_encode(file_get_contents($headerImagePath)) : '';
         $footerImageSrc = file_exists($footerImagePath) ? 'data:image/jpg;base64,' . base64_encode(file_get_contents($footerImagePath)) : '';
@@ -118,7 +117,7 @@ class TestController extends Controller
                 </tr>
                 <tr>
                     <th>Collected</th>
-                    <td>' . Carbon::parse($LabTrans->result_date)->format('Y-m-d') . '</td>
+                    <td>' . \Carbon\Carbon::parse($LabTrans->result_date)->format('Y-m-d') . '</td>
                     <th>Doctor Name</th>
                     <td>' . $LabTrans->emp_desc . '</td>
                 </tr>

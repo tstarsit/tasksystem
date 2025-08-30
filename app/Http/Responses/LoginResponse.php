@@ -5,7 +5,7 @@ use App\Filament\Resources\TicketResource;
 use Illuminate\Http\RedirectResponse;
 use Livewire\Features\SupportRedirects\Redirector;
 
-class LoginResponse extends \Filament\Auth\Http\Responses\LoginResponse
+class LoginResponse extends \Filament\Http\Responses\Auth\LoginResponse
 {
     public function toResponse($request): RedirectResponse|Redirector
     {

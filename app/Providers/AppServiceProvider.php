@@ -2,8 +2,8 @@
 
 namespace App\Providers;
 
-use Filament\Auth\Http\Responses\LoginResponse;
 use BezhanSalleh\FilamentLanguageSwitch\LanguageSwitch;
+use Filament\Http\Responses\Auth\LoginResponse;
 use Filament\Support\Assets\Css;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Database\Eloquent\Model;

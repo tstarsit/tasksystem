@@ -5,6 +5,7 @@ use App\Exports\UserTicketExport;
 use App\Models\User;
 use App\Models\Ticket;
 use Filament\Actions\CreateAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Pages\Page;
 use Filament\Forms;
@@ -17,7 +18,9 @@ use Filament\Tables\Actions\Action;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use PHPUnit\Event\Telemetry\System;
@@ -32,10 +35,12 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
 
     protected static string $view = 'filament.pages.user-tickets';
     protected static ?string $navigationIcon = 'heroicon-s-document';
+
     public static function getNavigationGroup(): ?string
     {
         return __('Reports');
     }
+
     public function getTitle(): string|Htmlable
     {
         return __('User Tickets');
@@ -48,7 +53,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
 
     public function getMaxContentWidth(): MaxWidth|string|null
     {
-        return MaxWidth::FitContent;
+        return MaxWidth::Full; // Changed from MaxContent to Full
     }
 
     public static function canAccess(): bool
@@ -78,15 +83,13 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
         return $query;
     }
 
-
     public function mount(): void
     {
         $this->form->fill();
     }
 
     protected function getFormSchema(): array
-{
-
+    {
         return [
             Forms\Components\Grid::make()
                 ->schema([
@@ -100,7 +103,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                         ->default('client')
                         ->reactive()
                         ->afterStateUpdated(fn ($state) => $this->role = $state)
-                        ->columnSpan(1), // Adjust column span as needed
+                        ->columnSpan(1),
 
                     Select::make('selectedUser')
                         ->label('Select User')
@@ -109,12 +112,13 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                         ->reactive()
                         ->translateLabel()
                         ->afterStateUpdated(fn () => $this->resetTable())
-                        ->columnSpan(3), // Adjust column span as needed
+                        ->columnSpan(3),
                 ])
-                ->columns(4) // Total columns in the grid
-                ->extraAttributes(['class' => 'gap-4']), // Optional: add gap between fields
+                ->columns(4)
+                ->extraAttributes(['class' => 'gap-4']),
         ];
     }
+
     public function getTicketStats(): array
     {
         if (!$this->selectedUser) {
@@ -127,10 +131,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
             ];
         }
 
-        // Get the base query with all applied filters
         $query = $this->getFilteredTableQuery();
-
-        // Clone for individual counts
         $baseQuery = clone $query;
 
         return [
@@ -141,6 +142,7 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
             'deleted' => (clone $baseQuery)->whereNotNull('deleted_at')->count(),
         ];
     }
+
     protected function getUserOptions()
     {
         return match ($this->role) {
@@ -152,8 +154,8 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                     $user->id => ($user->client->name ?? 'Unnamed') . ' (' . $user->username . ')',
                 ]),
 
-            'admin' => User::role(['admin', 'Head']) // Accept both roles
-            ->where('type', 1)
+            'admin' => User::role(['admin', 'Head'])
+                ->where('type', 1)
                 ->active()
                 ->whereHas('admin')
                 ->with('admin')
@@ -196,35 +198,25 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                 ->label('Service Type')
                 ->placeholder('All Services'),
 
-            Tables\Filters\Filter::make('created_at')
+            Tables\Filters\Filter::make('delivered_date')
                 ->form([
-                    DateTimePicker::make('created_from')
-                        ->label('From Date'),
-                    DateTimePicker::make('created_until')
-                        ->label('To Date'),
+                    DatePicker::make('created_from')
+                        ->label(__('From Date'))
+                        ->columnSpan(1),
+                    DatePicker::make('created_until')
+                        ->label(__('To Date'))
+                        ->columnSpan(1),
                 ])
                 ->query(function ($query, array $data) {
                     return $query
-                        ->when($data['created_from'],
-                            fn ($query) => $query->where('created_at', '>=', $data['created_from'])
+                        ->when(
+                            $data['created_from'],
+                            fn (Builder $query, $date): Builder => $query->whereDate('delivered_date', '>=', $date),
                         )
-                        ->when($data['created_until'],
-                            fn ($query) => $query->where('created_at', '<=', $data['created_until'])
+                        ->when(
+                            $data['created_until'],
+                            fn (Builder $query, $date): Builder => $query->whereDate('delivered_date', '<=', $date),
                         );
-                })
-                ->indicateUsing(function (array $data): ?string {
-                    if (!$data['created_from'] && !$data['created_until']) {
-                        return null;
-                    }
-
-                    // Convert string dates to DateTime objects
-                    $from = $data['created_from'] ? Carbon::parse($data['created_from']) : null;
-                    $until = $data['created_until'] ? Carbon::parse($data['created_until']) : null;
-
-                    return 'Date range: ' .
-                        ($from ? $from->format('M j, Y') : '∞') .
-                        ' - ' .
-                        ($until ? $until->format('M j, Y') : '∞');
                 }),
 
             Tables\Filters\Filter::make('is_urgent')
@@ -242,59 +234,50 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                 ->translateLabel()
                 ->toggleable()
                 ->extraAttributes(function (Ticket $ticket) {
-
                     if ($ticket->isUrgent && $ticket->assigned_to == auth()->id()) {
-                        return [
-                            'class' => 'dark:bg-purple rounded-lg rounded bg-purple', // Specific color for both conditions
-                        ];
+                        return ['class' => 'dark:bg-purple rounded-lg rounded bg-purple'];
                     }
-
-                    // Check if the ticket is urgent
                     if ($ticket->isUrgent) {
-                        return [
-                            'class' => 'dark:bg-danger rounded-lg rounded bg-danger', // Color for urgent tickets
-                        ];
+                        return ['class' => 'dark:bg-danger rounded-lg rounded bg-danger'];
                     }
-
-                    // Check if the ticket is assigned to the current user
                     if ($ticket->assigned_to == auth()->id()) {
-                        return [
-                            'class' => 'dark:bg-success rounded-lg rounded bg-success', // Color for assigned tickets
-                        ];
+                        return ['class' => 'dark:bg-success rounded-lg rounded bg-success'];
                     }
-
-                    // Default case (no special conditions)
                     return [];
                 })
                 ->tooltip(fn (Ticket $record): string => $record->created_at ? $record->created_at->format('Y-m-d H:i:s') : ''),
+
             Tables\Columns\TextColumn::make('delivered_date')
                 ->date('d/m/Y')
                 ->translateLabel()
                 ->toggleable(),
+
             TextColumn::make('description')
                 ->wrap()
+                ->html()
                 ->translateLabel()
                 ->label('Description'),
+
             Tables\Columns\TextColumn::make('status')
                 ->badge()
                 ->toggleable()
                 ->translateLabel()
                 ->icon(function ($state) {
                     return match ($state) {
-                        1 => 'heroicon-m-check-badge', // Resolved
-                        2 => 'heroicon-m-clock', // Pending
-                        3 => 'heroicon-m-arrow-path',    // In Progress
-                        4 => 'heroicon-m-currency-dollar',  // Paid
-                        default => 'secondary', // Default icon if status is not found
+                        1 => 'heroicon-m-check-badge',
+                        2 => 'heroicon-m-clock',
+                        3 => 'heroicon-m-arrow-path',
+                        4 => 'heroicon-m-currency-dollar',
+                        default => 'secondary',
                     };
                 })
                 ->color(function ($state) {
                     return match ($state) {
-                        1 => 'success', // Resolved
-                        2 => 'warning', // Pending
-                        3 => 'info',    // In Progress
-                        4 => 'danger',  // Paid
-                        default => 'secondary', // Default color if status is not found
+                        1 => 'success',
+                        2 => 'warning',
+                        3 => 'info',
+                        4 => 'danger',
+                        default => 'secondary',
                     };
                 })
                 ->formatStateUsing(function ($record,$state) {
@@ -307,9 +290,10 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                         4 => __('Paid'),
                     ][$state] ?? 'Unknown';
                 }),
+
             TextColumn::make('solution')
-            ->wrap()
-            ->translateLabel(),
+                ->wrap()
+                ->translateLabel(),
         ];
     }
 
@@ -327,12 +311,9 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
                     );
                 })
                 ->color('success')
-                ->hidden(!$this->selectedUser), // Only show when a user is selected
+                ->hidden(!$this->selectedUser),
         ];
     }
-
-
-
 
     protected function getTableBulkActions(): array
     {
@@ -344,4 +325,18 @@ class UserTickets extends Page implements Forms\Contracts\HasForms, HasTable
         ];
     }
 
+    // Add this method to configure the table for full width
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query($this->getTableQuery())
+            ->columns($this->getTableColumns())
+            ->filters($this->getTableFilters())
+            ->headerActions($this->getTableHeaderActions())
+            ->bulkActions($this->getTableBulkActions())
+            ->contentGrid(['md' => 2, 'xl' => 3]) // Optional: adjust grid layout
+            ->paginated([10, 25, 50, 100, 'all']) // Optional: customize pagination
+            ->deferLoading() // Optional: improve performance
+            ->striped();
+    }
 }

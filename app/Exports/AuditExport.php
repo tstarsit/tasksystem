@@ -2,7 +2,6 @@
 
 namespace App\Exports;
 
-use Illuminate\Support\Collection;
 use App\Models\Audit;
 use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -11,7 +10,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 class AuditExport implements FromCollection, WithHeadings
 {
     /**
-     * @return Collection
+     * @return \Illuminate\Support\Collection
      */
     public function collection()
     {
